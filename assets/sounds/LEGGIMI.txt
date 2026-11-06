@@ -1,0 +1,28 @@
+Suoni opzionali della Bazzica
+=============================
+Il gioco sintetizza tutti i suoni con il browser (Web Audio API).
+Se vuoi usare file tuoi, mettili in questa cartella con uno di questi nomi
+(estensione .mp3, .ogg o .wav): verranno usati al posto dei suoni sintetizzati.
+
+  carta          carta giocata in tavola
+  distribuzione  distribuzione delle carte
+  presa          carte che vanno nel mazzo delle prese
+  scopa          Scopa
+  bazzica        chiamata di una Bazzica
+  piccola        Piccola (variante Curie)
+  grande         Grande (variante Curie)
+  asso           asso a faccia in su (variante Avogadro)
+  napola         Napola / Napoleone
+  palo           "Che Palo!"
+  fuoco          Passa veloce
+  passa          passaggio normale di una carta
+  turno          tocca a te
+  fineMano       fine della Mano
+  vittoria       fine della partita
+
+File attuali (6/11/2026)
+------------------------
+bazzica2/3/5/7.mp3 e scopa.mp3 sono le versioni sistemate dei file scelti dall'utente:
+silenzi iniziali/finali tagliati, breve dissolvenza, volume normalizzato in scala crescente
+(Bazzica 2 = -19 LUFS, 3 = -17, 5 = -15, 7 = -14, Scopa = -18). Gli originali sono in
+originali/ e non vengono usati dal gioco.

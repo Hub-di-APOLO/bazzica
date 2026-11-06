@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bazzica</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="/web/css/style.css">
+</head>
+<body>
+<div class="sfondo-scienziati" aria-hidden="true">
+  <img src="/web/img/scienziati/einstein.svg" alt="" style="left:2%;top:30%;--r:-8deg">
+  <img src="/web/img/scienziati/curie.svg" alt="" style="left:89%;top:26%;--r:6deg">
+  <img src="/web/img/scienziati/fermi.svg" alt="" style="left:1%;top:62%;--r:5deg">
+  <img src="/web/img/scienziati/pascal.svg" alt="" style="left:90%;top:58%;--r:-6deg">
+  <img src="/web/img/scienziati/heisenberg.svg" alt="" style="left:14%;top:84%;--r:-4deg">
+  <img src="/web/img/scienziati/avogadro.svg" alt="" style="left:76%;top:84%;--r:7deg">
+  <img src="/web/img/scienziati/federico.svg" alt="" style="left:46%;top:1%;--r:-3deg">
+  <img src="/web/img/scienziati/hack.svg" alt="" style="left:47%;top:86%;--r:4deg">
+</div>
+<div id="app">
+
+  <!-- ===================== Nome ===================== -->
+  <section id="scr-nome" class="screen">
+    <div class="pannello centrato">
+      <h1 class="logo">Bazzica</h1>
+      <p class="sottotitolo">Il gioco di carte, in rete locale o sullo stesso PC</p>
+      <form id="form-nome">
+        <label>Come ti chiami?
+          <input id="inp-nome" maxlength="24" autocomplete="off" required placeholder="Il tuo nome">
+        </label>
+        <div class="etichetta">Scegli il tuo avatar</div>
+        <div class="scelta-avatar" id="scelta-avatar"></div>
+        <button class="btn primario" type="submit">Entra</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- ===================== Lobby ===================== -->
+  <section id="scr-lobby" class="screen">
+    <header class="barra">
+      <h1 class="logo piccolo">Bazzica</h1>
+      <div class="spazio"></div>
+      <span id="lobby-nome" class="chip"></span>
+      <button class="btn" id="btn-cambia-nome">Cambia nome</button>
+      <button class="btn" id="btn-storico">Storico</button>
+    </header>
+    <div class="lobby-grid">
+      <div class="pannello">
+        <h2>Tavoli</h2>
+        <div id="lista-tavoli" class="lista-tavoli"></div>
+      </div>
+      <div class="pannello">
+        <h2>Nuovo tavolo</h2>
+        <form id="form-crea">
+          <label>Nome del tavolo <input id="crea-nome" maxlength="40" placeholder="Tavolo di ..."></label>
+          <label>Variante <select id="crea-variante"></select></label>
+          <p class="desc-variante" id="crea-desc"></p>
+          <label class="check"><input type="checkbox" id="crea-mh"> Margherita Hack (4 Mani esatte)</label>
+          <button class="btn primario" type="submit">Crea tavolo</button>
+        </form>
+        <p class="nota">Per giocare in più persone sullo stesso PC (modalità locale), siediti su più posti dallo stesso browser: ognuno potrà inserire il proprio nome.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== Stanza del tavolo ===================== -->
+  <section id="scr-stanza" class="screen">
+    <header class="barra">
+      <button class="btn" id="btn-stanza-esci">&larr; Lobby</button>
+      <h2 id="stanza-titolo"></h2>
+      <div class="spazio"></div>
+      <span id="stanza-stato" class="chip"></span>
+    </header>
+    <div class="stanza">
+      <div class="posti-croce" id="posti-croce"></div>
+      <div class="pannello stanza-impostazioni">
+        <h3>Impostazioni</h3>
+        <label>Variante <select id="stanza-variante"></select></label>
+        <p class="desc-variante" id="stanza-desc"></p>
+        <label class="check"><input type="checkbox" id="stanza-mh"> Margherita Hack (4 Mani esatte)</label>
+        <div class="nomi-squadre">
+          <label>Timer scambio carte <select id="stanza-ts">
+            <option value="0">Nessuno</option><option value="15">15 s</option><option value="20">20 s</option>
+            <option value="30">30 s</option><option value="45">45 s</option><option value="60">60 s</option><option value="90">90 s</option></select></label>
+          <label>Timer per ogni carta <select id="stanza-tg">
+            <option value="0">Nessuno</option><option value="8">8 s</option><option value="10">10 s</option>
+            <option value="15">15 s</option><option value="20">20 s</option><option value="30">30 s</option><option value="45">45 s</option><option value="60">60 s</option></select></label>
+        </div>
+        <div class="nomi-squadre">
+          <label>Nome squadra Nord–Sud <input id="stanza-sq0" maxlength="20" placeholder="Squadra 1"></label>
+          <label>Nome squadra Est–Ovest <input id="stanza-sq1" maxlength="20" placeholder="Squadra 2"></label>
+        </div>
+        <p class="nota">Se non scegli i nomi, le squadre si chiamano "Squadra 1" e "Squadra 2". Il primo mazziere viene sorteggiato.</p>
+        <div class="riga-btn">
+          <button class="btn primario" id="btn-avvia">Avvia partita</button>
+          <button class="btn" id="btn-rientra">Rientra in partita</button>
+          <button class="btn" id="btn-guarda">Guarda la partita</button>
+          <button class="btn pericolo" id="btn-elimina">Elimina tavolo</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== Gioco ===================== -->
+  <section id="scr-gioco" class="screen">
+    <div id="gioco">
+      <header class="hud">
+        <div class="hud-sx">
+          <button class="btn icona" id="btn-menu" title="Menu">&#9776;</button>
+          <div class="hud-blocco">
+            <span class="hud-label">Variante</span><span id="hud-variante"></span>
+          </div>
+          <div class="hud-blocco">
+            <span class="hud-label">Mano</span><span id="hud-mano"></span>
+          </div>
+          <div class="hud-blocco">
+            <span class="hud-label">Turno</span><span id="hud-turno"></span>
+          </div>
+        </div>
+        <div class="hud-punti" id="hud-punti"></div>
+        <div class="hud-dx">
+          <button class="btn icona" id="btn-muto" title="Audio">&#128266;</button>
+        </div>
+      </header>
+
+      <div class="tappeto" id="tappeto">
+        <div class="cella c-asx">
+          <button class="btn-tondo" id="btn-ultima" title="Mostra l'ultima presa"><span class="ico">👀</span><span class="lbl">Ultima presa</span></button>
+        </div>
+        <div class="posto pos-2" data-pos="2"></div>
+        <div class="cella c-adx"><div class="prese prese-avv" id="prese-avv"></div></div>
+        <div class="posto pos-1" data-pos="1"></div>
+        <div class="centro" id="centro"><div class="tavola" id="tavola"></div></div>
+        <div class="posto pos-3" data-pos="3"></div>
+        <div class="cella c-bsx"><div class="prese prese-mia" id="prese-mia"></div></div>
+        <div class="c-basso">
+          <div class="posto pos-0" data-pos="0"></div>
+          <div class="messaggio-turno" id="msg-turno"></div>
+          <div class="msg-timer" id="msg-timer"></div>
+        </div>
+        <div class="cella c-bdx">
+          <button class="btn-striscia nascosto" id="btn-striscia" title="Striscia"><span class="ico">🃏</span><span class="lbl">Striscia</span></button>
+          <div class="frasi-box">
+            <button class="btn-frasi-grande nascosto" id="btn-frasi" title="Che Palo! e frasi"><span class="ico">💬</span><span class="lbl">Chat</span></button>
+            <div class="menu-frasi nascosto" id="menu-frasi"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="zona-mano">
+        <div class="barra-azioni" id="barra-azioni"></div>
+        <div class="mia-mano" id="mia-mano"></div>
+      </div>
+    </div>
+    <div id="fx" class="fx-layer"></div>
+  </section>
+
+  <!-- ===================== Storico ===================== -->
+  <section id="scr-storico" class="screen">
+    <header class="barra">
+      <button class="btn" id="btn-storico-esci">&larr; Lobby</button>
+      <h2>Storico delle partite</h2>
+    </header>
+    <div class="pannello storico" id="storico-contenuto"></div>
+  </section>
+</div>
+
+<!-- ===================== Overlay ===================== -->
+<div id="ov-passa" class="overlay nascosto">
+  <div class="ov-box cliccabile">
+    <p class="grande-testo">Passa a <b id="ov-passa-nome"></b></p>
+    <p>Tocca per mostrare le carte</p>
+  </div>
+</div>
+<div id="ov-pausa" class="overlay nascosto">
+  <div class="ov-box">
+    <div class="spinner"></div>
+    <p id="ov-pausa-testo"></p>
+  </div>
+</div>
+<div id="ov-modal" class="overlay nascosto">
+  <div class="ov-box modal" id="ov-modal-box"></div>
+</div>
+<div id="ov-connessione" class="banner-connessione nascosto">Connessione persa — riconnessione in corso…</div>
+<div id="toast" class="toast nascosto"></div>
+
+<script type="module" src="/web/js/main.js"></script>
+</body>
+</html>
