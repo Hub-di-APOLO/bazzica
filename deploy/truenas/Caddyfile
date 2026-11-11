@@ -1,7 +1,7 @@
 # Reverse proxy HTTPS per la Bazzica (montato nel container Caddy dal YAML di TrueNAS).
 # - Dominio dalla variabile BAZZICA_DOMINIO, token DuckDNS da DUCKDNS_TOKEN.
 # - Certificato Let's Encrypt con verifica DNS su DuckDNS: nessuna porta 80/443 esterna necessaria,
-#   la Bazzica si raggiunge da una porta a scelta (es. https://tuonome.duckdns.org:20443),
+#   la Bazzica si raggiunge da una porta a scelta (https://coverinas.duckdns.org:7845),
 #   mentre le porte 80/443 del modem restano come sono (interfaccia del NAS).
 {
 	# niente redirect automatico da http a https: porterebbe sulla 443, cioè sul NAS
