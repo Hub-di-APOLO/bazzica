@@ -3,13 +3,17 @@ import pytest
 from fastapi.testclient import TestClient
 
 from bazzica.server.app import create_app
+from bazzica.server.config import Config
 from bazzica.server.tables import Manager
+
+# i client dei test giocano all'istante, molto più veloci di un umano: niente limite di frequenza
+SENZA_LIMITI = Config(max_msg_secondo=0)
 
 
 @pytest.fixture
 def client(tmp_path):
     m = Manager(cartella_log=str(tmp_path / "logs"), db_path=str(tmp_path / "s.db"), ritardo_bot=(0, 0),
-                pausa_fine_mano=0)
+                pausa_fine_mano=0, config=SENZA_LIMITI)
     app = create_app(m)
     with TestClient(app) as c:
         c.manager = m
@@ -125,7 +129,8 @@ def test_frasi_e_avatar(client):
 @pytest.fixture
 def client_timer(tmp_path):
     m = Manager(cartella_log=str(tmp_path / "logs"), db_path=str(tmp_path / "s.db"), ritardo_bot=(0, 0),
-                pausa_fine_mano=0, timer_scambio=0.4, timer_giocata=0.4)
+                pausa_fine_mano=0, timer_scambio=0.4, timer_giocata=0.4,
+                config=SENZA_LIMITI)
     with TestClient(create_app(m)) as c:
         c.manager = m
         yield c
@@ -233,3 +238,74 @@ def test_spettatore_partita_tra_bot(client):
         assert m["spettatore"]
         ws.send_json({"type": "smetti", "tavolo": tid})
     assert not client.manager.tavoli[tid].spettatori
+
+
+# ---------------------------------------------------------------- codice d'accesso
+from starlette.websockets import WebSocketDisconnect  # noqa: E402
+
+import bazzica.server.app as modulo_app  # noqa: E402
+
+
+@pytest.fixture
+def client_codice(tmp_path, monkeypatch):
+    monkeypatch.setattr(modulo_app, "ATTESA_CODICE_ERRATO", 0)
+    m = Manager(cartella_log=str(tmp_path / "logs"), db_path=str(tmp_path / "s.db"), ritardo_bot=(0, 0),
+                pausa_fine_mano=0, config=Config(codice="Sette bello"))
+    with TestClient(create_app(m)) as c:
+        yield c
+
+
+@pytest.mark.parametrize("query,errato", [("", False), ("&codice=sbagliato", True)])
+def test_codice_mancante_o_errato_rifiuta(client_codice, query, errato):
+    with client_codice.websocket_connect(f"/ws?token=t1&nome=Paolo{query}") as ws:
+        msg = ws.receive_json()
+        assert msg == {"type": "codice_richiesto", "errato": errato}
+        with pytest.raises(WebSocketDisconnect) as ex:
+            ws.receive_json()
+        assert ex.value.code == 4401
+    assert not client_codice.app.state.manager.conn   # mai registrato tra le connessioni
+
+
+def test_codice_corretto_entra(client_codice):
+    with client_codice.websocket_connect("/ws?token=t1&nome=Paolo&codice=Sette%20bello") as ws:
+        assert ws.receive_json()["type"] == "benvenuto"
+        assert ws.receive_json()["type"] == "lobby"
+
+
+def test_codice_protegge_lo_storico(client_codice):
+    assert client_codice.get("/api/storico").status_code == 401
+    assert client_codice.get("/api/storico", headers={"X-Bazzica-Codice": "no"}).status_code == 401
+    assert client_codice.get("/api/storico", headers={"X-Bazzica-Codice": "Sette bello"}).status_code == 200
+    assert client_codice.get("/api/storico/1?codice=Sette%20bello").status_code == 404
+    assert client_codice.get("/api/carte").status_code == 200        # le carte restano pubbliche
+    assert client_codice.get("/").status_code == 200
+
+
+def test_senza_codice_tutto_come_prima(client):
+    with client.websocket_connect("/ws?token=t1&nome=Paolo&codice=qualsiasi") as ws:
+        assert ws.receive_json()["type"] == "benvenuto"
+    assert client.get("/api/storico").status_code == 200
+
+
+# ---------------------------------------------------------------- endpoint di salute
+def test_salute(client):
+    r = client.get("/api/salute")
+    assert r.status_code == 200
+    d = r.json()
+    assert d["stato"] == "ok" and isinstance(d["versione"], str)
+    assert (d["tavoli"], d["partite_in_corso"], d["connessioni"]) == (0, 0, 0)
+    with client.websocket_connect("/ws?token=tok1&nome=Paolo") as ws:
+        crea_con_bot(ws)
+        d = client.get("/api/salute").json()
+        assert d["tavoli"] == 1 and d["connessioni"] == 1
+
+
+def test_salute_senza_codice_e_con_storico_rotto(client_codice, monkeypatch):
+    assert client_codice.get("/api/salute").status_code == 200      # anche con il codice d'accesso attivo
+    m = client_codice.app.state.manager
+
+    def rotto():
+        raise OSError("disco pieno")
+    monkeypatch.setattr(m.storico, "controlla", rotto)
+    r = client_codice.get("/api/salute")
+    assert r.status_code == 503 and r.json()["stato"] == "errore"

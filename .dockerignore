@@ -1,0 +1,25 @@
+# Nell'immagine servono solo run.py, bazzica/, assets/ e requirements-docker.txt
+.git
+.gitignore
+.gitattributes
+.idea
+.vscode
+.venv
+venv
+env
+**/__pycache__
+**/*.py[cod]
+.pytest_cache
+data
+logs
+mobile
+docs
+tests
+tools
+deploy
+Claude outputs
+assets/sounds/originali
+assets/cards/Carte_piacentine_al_completo.png
+*.md
+Dockerfile
+.dockerignore

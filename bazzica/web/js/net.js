@@ -1,6 +1,19 @@
 // Connessione WebSocket con token persistente e riconnessione automatica.
 import { store, $ } from "./util.js";
 
+/**
+ * Indirizzo della WebSocket a partire da quello della pagina: wss:// se la pagina è in https://
+ * (es. dietro il reverse proxy), ws:// altrimenti; stesso host e porta della pagina.
+ * I parametri vuoti non vengono inviati (tranne token e nome, attesi dal server).
+ */
+export function urlWebSocket(loc, parametri) {
+  const proto = loc.protocol === "https:" ? "wss:" : "ws:";
+  const q = Object.entries(parametri)
+    .filter(([k, v]) => v || k === "token" || k === "nome")
+    .map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&");
+  return `${proto}//${loc.host}/ws?${q}`;
+}
+
 export class Rete {
   constructor(onMessage) {
     this.onMessage = onMessage;
@@ -11,10 +24,12 @@ export class Rete {
   }
 
   connetti() {
-    const proto = location.protocol === "https:" ? "wss" : "ws";
-    const nome = store("bazzica_nome") || "";
-    const avatar = store("bazzica_avatar") || "";
-    const url = `${proto}://${location.host}/ws?token=${encodeURIComponent(this.token)}&nome=${encodeURIComponent(nome)}&avatar=${encodeURIComponent(avatar)}`;
+    const url = urlWebSocket(location, {
+      token: this.token, nome: store("bazzica_nome") || "", avatar: store("bazzica_avatar") || "",
+      codice: store("bazzica_codice") || "",
+    });
+    clearTimeout(this.timerRiconnessione);
+    this.bloccato = false;
     const ws = new WebSocket(url);
     this.ws = ws;
     ws.onopen = () => {
@@ -25,17 +40,30 @@ export class Rete {
     };
     ws.onmessage = (ev) => {
       const msg = JSON.parse(ev.data);
+      // codice d'accesso mancante o errato: niente riconnessioni finché non lo si inserisce
+      if (msg.type === "codice_richiesto") this.bloccato = true;
       if (msg.type === "benvenuto" && msg.token) {
         this.token = msg.token;
         store("bazzica_token", msg.token);
       }
       this.onMessage(msg);
     };
-    ws.onclose = () => {
+    ws.onclose = (ev) => {
+      if (ws !== this.ws) return;               // vecchia connessione già sostituita
+      if (this.bloccato || ev.code === 4401) { this.bloccato = true; return; }
       $("#ov-connessione").classList.remove("nascosto");
       const attesa = Math.min(5000, 500 * 2 ** this.tentativi++);
-      setTimeout(() => this.connetti(), attesa);
+      this.timerRiconnessione = setTimeout(() => this.connetti(), attesa);
     };
+  }
+
+  /** Riprova subito (es. dopo aver inserito il codice d'accesso). */
+  riconnetti() {
+    const vecchia = this.ws;
+    this.ws = null;
+    if (vecchia && vecchia.readyState <= 1) vecchia.close();
+    this.tentativi = 0;
+    this.connetti();
   }
 
   invia(msg) {

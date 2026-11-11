@@ -1,5 +1,5 @@
 // Pagina "Storico": elenco partite e dettaglio Mano per Mano.
-import { el, $, SQUADRE } from "./util.js";
+import { el, $, SQUADRE, apiGet } from "./util.js";
 
 const ORIGINI = { sparecchio: "sparecchio", bazzica: "Bazzica", piccola: "Piccola", grande: "Grande", asso: "assi" };
 
@@ -12,7 +12,8 @@ function data(s) {
 export async function mostraStorico() {
   const box = $("#storico-contenuto");
   box.innerHTML = "Caricamento…";
-  const lista = await (await fetch("/api/storico")).json();
+  let lista;
+  try { lista = await apiGet("/api/storico"); } catch (e) { box.textContent = e.message; return; }
   box.innerHTML = "";
   if (!lista.length) { box.append(el("p", { class: "vuoto" }, "Nessuna partita giocata finora.")); return; }
   const tab = el("table", {}, el("tr", {}, ...["Data", "Tavolo", "Variante", "Nord–Sud", "Est–Ovest", "Punteggio", "Mani", "Esito"].map((h) => el("th", {}, h))));
@@ -40,7 +41,7 @@ function sqN(p, t) {
 
 async function dettaglio(id) {
   const box = $("#storico-contenuto");
-  const p = await (await fetch(`/api/storico/${id}`)).json();
+  const p = await apiGet(`/api/storico/${id}`);
   box.innerHTML = "";
   box.append(el("button", { class: "btn", onclick: mostraStorico }, "← Elenco"));
   box.append(el("h3", { style: "margin-top:12px" }, `${p.tavolo} — ${p.variante}${p.margherita ? " + Margherita Hack" : ""}`));

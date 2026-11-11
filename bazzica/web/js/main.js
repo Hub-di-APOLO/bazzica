@@ -65,6 +65,14 @@ class App {
       this.sceltaAvatar($("#scelta-avatar"), this.avatar, (a) => { avatarScelto = a; });
       this.mostra("nome");
     });
+    $("#form-codice").addEventListener("submit", (ev) => {
+      ev.preventDefault();
+      const c = $("#inp-codice").value.trim();
+      if (!c) return;
+      store("bazzica_codice", c);
+      $("#form-codice button").disabled = true;
+      this.rete.riconnetti();
+    });
     $("#btn-storico").addEventListener("click", () => { this.mostra("storico"); mostraStorico(); });
     $("#btn-storico-esci").addEventListener("click", () => this.mostra("lobby"));
     const muto = $("#btn-muto");
@@ -122,6 +130,7 @@ class App {
     this.uscitoDa = null;
     this.stanza = tid;
     this.partita.apri(tid, t ? t.miei : [], this.guardando === tid);
+    if (this.partita.vecchiaFinita() && t && t.stato === "in_corso") this.partita.nuovaPartita();
     this.mostra("gioco");
     this.partita.modalRiepilogo = false;
     this.partita.modalFinale = false;
@@ -163,7 +172,16 @@ class App {
 
   messaggio(m) {
     switch (m.type) {
+      case "codice_richiesto":
+        $("#codice-errato").classList.toggle("nascosto", !m.errato);
+        $("#form-codice button").disabled = false;
+        $("#ov-connessione").classList.add("nascosto");
+        if (m.errato) store("bazzica_codice", null);
+        this.mostra("codice");
+        setTimeout(() => { const i = $("#inp-codice"); i.value = ""; i.focus(); }, 50);
+        break;
       case "benvenuto":
+        if (this.schermo === "codice") this.mostra(this.nome ? "lobby" : "nome");
         if (this.nome && (!m.nome || m.avatar !== this.avatar)) this.rete.invia({ type: "nome", nome: this.nome, avatar: this.avatar });
         break;
       case "lobby":

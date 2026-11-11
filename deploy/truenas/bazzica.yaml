@@ -1,0 +1,66 @@
+# Bazzica su TrueNAS SCALE 25.04 — da incollare in Apps → Discover Apps → ⋮ → "Install via YAML".
+# Prima sostituisci:  POOL  →  il nome del tuo pool  (es. tank)
+#                     tuonome.duckdns.org  →  il tuo sottodominio
+#                     cambia-questo-codice →  il codice d'accesso da dare agli amici
+#                     IL-TUO-TOKEN-DUCKDNS →  il token che trovi su duckdns.org (in alto, "token")
+# Le porte 80/443 del modem restano al NAS: la Bazzica si apre su https://tuonome.duckdns.org:20443
+# (modem: porta 20443 esterna → NAS 8443).
+# Guida completa: docs/deploy-truenas.md
+
+services:
+  bazzica:
+    image: bazzica:locale            # costruita sul NAS con: docker build -t bazzica:locale /mnt/POOL/apps/bazzica/codice
+    pull_policy: never               # immagine locale: non cercarla su Docker Hub
+    restart: unless-stopped
+    user: "568:568"                  # utente apps di TrueNAS
+    environment:
+      TZ: Europe/Rome
+      BAZZICA_CODICE: "cambia-questo-codice"
+      BAZZICA_PROXY_FIDATI: "172.30.77.20"   # solo Caddy può indicare l'IP reale dei client
+      BAZZICA_MAX_TAVOLI: "50"
+      BAZZICA_MAX_TAVOLI_TOKEN: "5"
+      BAZZICA_MAX_CONN_IP: "20"
+      BAZZICA_TAVOLO_INATTIVO_MIN: "180"
+      BAZZICA_PAUSA_MAX_ORE: "12"
+    volumes:
+      - /mnt/POOL/apps/bazzica/data:/app/data
+      - /mnt/POOL/apps/bazzica/logs:/app/logs
+    ports:
+      - "8000:8000"                  # accesso diretto in LAN (http://IP-DEL-NAS:8000); toglila se non serve
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/salute', timeout=4).status == 200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    networks:
+      rete_bazzica:
+        ipv4_address: 172.30.77.10
+
+  caddy:
+    image: caddy-duckdns:locale     # costruita sul NAS: docker build -t caddy-duckdns:locale /mnt/POOL/apps/bazzica/codice/deploy/truenas/caddy
+    pull_policy: never
+    restart: unless-stopped
+    depends_on:
+      bazzica:
+        condition: service_healthy
+    environment:
+      TZ: Europe/Rome
+      BAZZICA_DOMINIO: "tuonome.duckdns.org"
+      DUCKDNS_TOKEN: "IL-TUO-TOKEN-DUCKDNS"   # per la verifica DNS del certificato
+    ports:
+      - "8443:443"                   # modem: porta 20443 esterna → NAS 8443
+      - "8443:443/udp"               # HTTP/3 (facoltativa: stessa regola anche in UDP sul modem)
+    volumes:
+      - /mnt/POOL/apps/bazzica/codice/deploy/truenas/Caddyfile:/etc/caddy/Caddyfile:ro
+      - /mnt/POOL/apps/bazzica/caddy/data:/data          # certificati: da conservare
+      - /mnt/POOL/apps/bazzica/caddy/config:/config
+    networks:
+      rete_bazzica:
+        ipv4_address: 172.30.77.20
+
+networks:
+  rete_bazzica:
+    ipam:
+      config:
+        - subnet: 172.30.77.0/24

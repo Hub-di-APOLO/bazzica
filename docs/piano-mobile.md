@@ -1,5 +1,9 @@
 # Bazzica mobile — piano (Fase 0: analisi)
 
+> **11/11/2026 — piano sospeso.** Fatte le fasi 0 e 1 (PRNG mulberry32 e tracce). La priorità ora è
+> pubblicare il server Python su TrueNAS (vedi `docs/deploy-truenas.md`). Le aggiunte al protocollo
+> (`codice_richiesto`, chiusure 4401/4408/4413/4429, `/api/salute`) andranno considerate se il piano riparte.
+
 Documento di lavoro per portare la Bazzica su Android/iOS come app Flutter che gioca in rete
 locale senza internet. La versione Python resta il **riferimento ufficiale delle regole**.
 
@@ -323,13 +327,15 @@ bloccato (vedi D2).
 - `striscia` {tavolo, posto}: valido solo in fase di gioco mentre `corrente == (posto + 3) % 4`
   (altrimenti ignorato in silenzio); anti-spam 1 s per posto; evento `striscia` {seat, verso}.
 - Chat bloccata durante lo scambio: `frase` e l'azione `che_palo` in fase `scambio` ⇒ `errore`.
-- **Timer** (se attivo): 30 s per lo scambio (allo scadere chi non ha passato passa una carta a caso,
-  non veloce), 15 s per ogni carta dei giocatori umani (allo scadere sceglie l'euristico tra le sole
+- **Timer** (se attivo; di base disattivati, durate scelte nella stanza): es. 30 s per lo scambio (allo scadere chi non ha passato passa una carta a caso,
+  non veloce), es. 15 s per ogni carta dei giocatori umani (allo scadere sceglie l'euristico tra le sole
   azioni `gioca`). Evento `tempo_scaduto` {fase, seat}. `info.timer` = {tipo, seat, restanti, totale}
   oppure null; si ferma in pausa e riparte da capo alla ripresa.
 - Avatar: 12 (aggiunti 🐢 e 🦭). Nomi predefiniti delle squadre nel motore: "Squadra 1", "Squadra 2".
 - (7/11) `imposta` accetta `timer_scambio` e `timer_giocata` in secondi (0–300, 0 = nessun timer);
   l'`info` del tavolo li riporta, più `guardabile` (partita in corso senza umani) e `spettatori`.
+- (7/11) Predefinito dei timer: 0 (nessuno). Messaggio finale: "<nome squadra> ha vinto!". Nuova partita sullo
+  stesso tavolo: il client scarta gli stati della partita finita e chiude la schermata finale.
 - (7/11) Spettatori delle partite tra soli bot: `guarda` / `smetti` / `visto {versione}`. Lo spettatore
   riceve `stato` ed `eventi` con `spettatore: true`, posto 0, tutte le mani scoperte e tutti gli eventi;
   `info.versione` cresce a ogni gruppo di eventi e i bot aspettano (max 10 s) che ogni spettatore

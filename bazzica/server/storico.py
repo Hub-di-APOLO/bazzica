@@ -48,6 +48,11 @@ class Storico:
         c.row_factory = sqlite3.Row
         return c
 
+    def controlla(self):
+        """Solleva un'eccezione se il database non è leggibile (per l'endpoint di salute)."""
+        with self._conn() as c:
+            c.execute("SELECT 1 FROM partite LIMIT 1").fetchall()
+
     def nuova_partita(self, tavolo, variante, margherita, giocatori, log_path) -> int:
         with self.lock, self._conn() as c:
             cur = c.execute(

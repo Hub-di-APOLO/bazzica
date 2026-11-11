@@ -722,3 +722,18 @@ table.riepilogo .punto { border: 2px solid var(--outline); }
 @keyframes galleggia { from { transform: translateY(0) rotate(var(--r, 0deg)); } to { transform: translateY(-12px) rotate(calc(var(--r, 0deg) + 4deg)); } }
 body[data-schermo="gioco"] .sfondo-scienziati img { opacity: .8; width: clamp(64px, 8vw, 120px); }
 .screen { background: transparent; }
+
+/* ---------- codice d'accesso ---------- */
+.errore-codice { color: #c0392b; font-weight: 600; margin: .3rem 0 .6rem; }
+#inp-codice { letter-spacing: .05em; }
+
+/* ---------- telefoni: meno scienziati, più piccoli e trasparenti, così non coprono i pannelli ---------- */
+@media (max-width: 600px) {
+  .sfondo-scienziati img { width: 58px; opacity: .55; }
+  .sfondo-scienziati img:nth-child(3), .sfondo-scienziati img:nth-child(4),
+  .sfondo-scienziati img:nth-child(7), .sfondo-scienziati img:nth-child(8) { display: none; }
+  body[data-schermo="gioco"] .sfondo-scienziati { display: none; }
+  .barra { flex-wrap: wrap; gap: 8px; padding: 10px 12px; }
+  .barra .spazio { flex-basis: 100%; height: 0; }
+  .barra .btn { padding: 8px 12px; }
+}

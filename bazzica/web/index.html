@@ -4,8 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Bazzica</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="/web/css/fonts.css">
 <link rel="stylesheet" href="/web/css/style.css">
 </head>
 <body>
@@ -32,6 +31,21 @@
         </label>
         <div class="etichetta">Scegli il tuo avatar</div>
         <div class="scelta-avatar" id="scelta-avatar"></div>
+        <button class="btn primario" type="submit">Entra</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- ===================== Codice d'accesso ===================== -->
+  <section id="scr-codice" class="screen">
+    <div class="pannello centrato">
+      <h1 class="logo">Bazzica</h1>
+      <p class="sottotitolo">Questo server è riservato: serve il codice d'accesso.</p>
+      <form id="form-codice">
+        <label>Codice d'accesso
+          <input id="inp-codice" maxlength="100" autocomplete="off" autocapitalize="off" spellcheck="false" required placeholder="Chiedilo a chi ti ha invitato">
+        </label>
+        <p class="errore-codice nascosto" id="codice-errato">Codice errato, riprova.</p>
         <button class="btn primario" type="submit">Entra</button>
       </form>
     </div>

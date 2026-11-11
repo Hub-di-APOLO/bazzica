@@ -70,8 +70,29 @@ export class Partita {
     this.miei = miei.slice();
   }
 
+  /** Una nuova partita è partita sullo stesso tavolo: si dimentica quella vecchia (e la sua schermata finale). */
+  nuovaPartita() {
+    const conModalFinale = this.modalFinale || this.modalInterrotta;
+    this.stati = {};
+    this.view = null;
+    this.coda = [];
+    this.selezione = null;
+    this.preselezione = null;
+    this.modalRiepilogo = false;
+    this.modalFinale = false;
+    this.modalInterrotta = false;
+    this.impostaTimer(null);
+    if (conModalFinale) this.app.chiudiModal();
+  }
+
+  /** True se gli stati in memoria sono di una partita già finita. */
+  vecchiaFinita() {
+    return Object.values(this.stati).some((st) => st.info && st.info.stato === "finita");
+  }
+
   ricevi(msg) {
     if (msg.tavolo !== this.tid) return;
+    if (msg.type === "stato" && msg.info && msg.info.stato === "in_corso" && this.vecchiaFinita()) this.nuovaPartita();
     // le esclamazioni ("Che Palo!" e frasi) compaiono subito, senza aspettare le altre animazioni
     if (msg.type === "eventi" && msg.eventi.length && msg.eventi.every((e) => e.tipo === "frase" || e.tipo === "che_palo" || e.tipo === "striscia")) {
       if (msg.posto === this.view && this.app.schermo === "gioco") msg.eventi.forEach((e) => this.animaEvento(e).catch(() => {}));
@@ -238,7 +259,7 @@ export class Partita {
     this.app.apriModal(box);
   }
 
-  // ------------------------------------------------------------ timer (scambio 30 s, giocata 15 s)
+  // ------------------------------------------------------------ timer (durate scelte nella stanza)
   impostaTimer(t, obs) {
     this.timer = t ? { ...t, fine: performance.now() + t.restanti * 1000 } : null;
     this.timerObs = obs || null;
@@ -715,8 +736,7 @@ export class Partita {
     const mio = squadra(this.view);
     let titolo;
     if (vinc === "pari") titolo = "Pareggio!";
-    else if (this.miei.length > 1 && this.miei.some((s) => squadra(s) !== mio)) titolo = `Vince ${this.sq()[vinc]}!`;
-    else titolo = vinc === mio ? "Avete vinto!" : `Vince ${this.sq()[vinc]}`;
+    else titolo = `${this.sq()[vinc]} ha vinto!`;
     if (conSuono) suona("vittoria");
     const ultimo = obs.storico_mani[obs.storico_mani.length - 1];
     const box = el("div", {},

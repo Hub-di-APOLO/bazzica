@@ -13,6 +13,7 @@ from ..engine import (preset, VARIANTI, new_game, legal_actions, apply_inplace, 
                       FASE_FINE_MANO, FASE_FINE_PARTITA, FASE_SCAMBIO, FASE_GIOCO)
 from ..engine.game import ev
 from ..bots import HeuristicAgent
+from .config import Config
 from .log import GameLogger
 from .storico import Storico
 
@@ -41,13 +42,15 @@ class Tavolo:
         self.task: Optional[asyncio.Task] = None
         self.lock = asyncio.Lock()
         self.ultimo_evento = time.monotonic()
+        self.ultima_attivita = time.monotonic()  # comandi ed eventi: serve alla pulizia automatica
+        self.senza_umani_da = None             # da quando la partita è senza umani connessi
         self.creato = time.time()
         self.ultimo_palo = [0.0] * 4
         self.ultima_striscia = [0.0] * 4
         self.squadre = list(NOMI_SQUADRE)      # nomi delle squadre scelti nella stanza
         self.timer_attivo = True
-        self.durata_scambio = None             # secondi; None = predefinito (30), 0 = nessun timer
-        self.durata_giocata = None             # secondi; None = predefinito (15), 0 = nessun timer
+        self.durata_scambio = None             # secondi; None = predefinito (nessuno), 0 = nessun timer
+        self.durata_giocata = None             # secondi; None = predefinito (nessuno), 0 = nessun timer
         self.spettatori: dict = {}             # token -> ultima versione vista (partite solo-bot)
         self.versione = 0                      # cresce a ogni gruppo di eventi
         self.timer_chiave = None
@@ -339,7 +342,7 @@ class Tavolo:
                     await self.m.invia(t, {"type": "eventi", "tavolo": self.id, "posto": s, "eventi": vis})
 
     async def gestisci_eventi(self, events):
-        self.ultimo_evento = time.monotonic()
+        self.ultimo_evento = self.ultima_attivita = time.monotonic()
         self.versione += 1
         if self.logger:
             self.logger.scrivi(events)
@@ -493,7 +496,8 @@ class Tavolo:
 
 class Manager:
     def __init__(self, cartella_log="logs", db_path="bazzica.db", ritardo_bot=(0.8, 1.5), pausa_fine_mano=2.0,
-                 timer_scambio=30.0, timer_giocata=15.0):
+                 timer_scambio=0, timer_giocata=0, config: Optional[Config] = None):
+        self.config = config or Config()
         self.tavoli: dict[str, Tavolo] = {}
         self.conn: dict[str, set] = {}       # token -> set di websocket
         self.nomi: dict[str, str] = {}       # token -> nome
@@ -564,6 +568,55 @@ class Manager:
                 await t.invia_tutto()
         await self.invia_lobby()
 
+    # ------------------------------------------------------------------ pulizia automatica
+    async def pulizia(self, ora=None):
+        """Elimina i tavoli non avviati inattivi da troppo tempo e termina le partite in pausa senza
+        nessun umano connesso da più di `pausa_max_ore`. Restituisce (eliminati, terminati)."""
+        ora = time.monotonic() if ora is None else ora
+        cfg = self.config
+        eliminati, terminati = [], []
+        for t in list(self.tavoli.values()):
+            umani = t.tokens_umani()
+            if t.stato == "in_corso":
+                if not umani or any(self.connesso(k) for k in umani):
+                    t.senza_umani_da = None          # partita tra bot o con qualcuno connesso
+                    continue
+                if t.senza_umani_da is None:
+                    t.senza_umani_da = ora
+                if cfg.pausa_max_ore and ora - t.senza_umani_da >= cfg.pausa_max_ore * 3600:
+                    t.termina(motivo="interrotta")
+                    if t.logger:
+                        t.logger.nota(f"(pulizia automatica: nessun giocatore connesso da {cfg.pausa_max_ore:g} ore)")
+                    t.ultima_attivita = ora
+                    terminati.append(t.id)
+                    await t.invia_tutto()
+                continue
+            # tavolo non avviato (o partita finita): chi è seduto o l'ha creato, se connesso, lo tiene in vita
+            if any(self.connesso(k) for k in umani | {t.owner}) or any(self.connesso(k) for k in t.spettatori):
+                t.ultima_attivita = ora
+                continue
+            if cfg.tavolo_inattivo_min and ora - t.ultima_attivita >= cfg.tavolo_inattivo_min * 60:
+                del self.tavoli[t.id]
+                eliminati.append(t.id)
+        # nomi e avatar dei token spariti (non connessi e non seduti da nessuna parte)
+        in_uso = set(self.conn) | {t.owner for t in self.tavoli.values()}
+        for t in self.tavoli.values():
+            in_uso |= t.tokens_umani()
+        for diz in (self.nomi, self.avatar):
+            for k in [k for k in diz if k not in in_uso]:
+                del diz[k]
+        if eliminati or terminati:
+            await self.invia_lobby()
+        return eliminati, terminati
+
+    async def ciclo_pulizia(self, intervallo=60.0):
+        while True:
+            await asyncio.sleep(intervallo)
+            try:
+                await self.pulizia()
+            except Exception as ex:  # pragma: no cover - la pulizia non deve mai fermare il server
+                print(f"Errore nella pulizia dei tavoli: {ex!r}")
+
     # ------------------------------------------------------------------ comandi
     def nuovo_token(self):
         return secrets.token_hex(16)
@@ -587,6 +640,11 @@ class Manager:
             await self.invia(token, self.lobby_msg(token))
             return
         if tipo == "crea_tavolo":
+            cfg = self.config
+            if cfg.max_tavoli and len(self.tavoli) >= cfg.max_tavoli:
+                raise ValueError("Ci sono già troppi tavoli: riprova più tardi o usa un tavolo esistente")
+            if cfg.max_tavoli_token and sum(t.owner == token for t in self.tavoli.values()) >= cfg.max_tavoli_token:
+                raise ValueError(f"Hai già {cfg.max_tavoli_token} tavoli: eliminane uno prima di crearne un altro")
             var = msg.get("variante", "Vanilla")
             if var not in VARIANTI:
                 raise ValueError("Variante sconosciuta")
@@ -599,6 +657,7 @@ class Manager:
             return
         if tav is None:
             raise ValueError("Tavolo inesistente")
+        tav.ultima_attivita = time.monotonic()
         if tipo == "apri":
             await self.invia(token, {"type": "tavolo", "tavolo": tav.info(token)})
             if tav.st and token in tav.tokens_umani():

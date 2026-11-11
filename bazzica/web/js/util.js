@@ -69,3 +69,11 @@ export function store(key, value) {
   } catch (e) { /* storage non disponibile */ }
   return null;
 }
+
+/** GET di un'API del server (con il codice d'accesso, se impostato). */
+export async function apiGet(url) {
+  const codice = store("bazzica_codice") || "";
+  const r = await fetch(url, { headers: codice ? { "X-Bazzica-Codice": codice } : {} });
+  if (!r.ok) throw new Error(r.status === 401 ? "Codice d'accesso richiesto" : `Errore ${r.status}`);
+  return r.json();
+}
