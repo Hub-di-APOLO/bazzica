@@ -14,7 +14,7 @@ services:
     user: "568:568"                  # utente apps di TrueNAS
     environment:
       TZ: Europe/Rome
-      BAZZICA_CODICE: "cambia-questo-codice"
+      BAZZICA_CODICE: "elebazzica"
       BAZZICA_PROXY_FIDATI: "172.30.77.20"   # solo Caddy può indicare l'IP reale dei client
       BAZZICA_MAX_TAVOLI: "50"
       BAZZICA_MAX_TAVOLI_TOKEN: "5"
