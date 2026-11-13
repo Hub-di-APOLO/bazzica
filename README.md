@@ -132,3 +132,70 @@ Come la Federico II, ma con le seguenti modifiche:
 Applicabile a qualsiasi variante, ma con le seguenti modifiche:
 - non si gioca fino a 21 punti, ma si fanno 4 Mani, in modo che ogni giocatore faccia da mazziere una volta, e vince la squadra con il maggior punteggio alla fine.
 - se al termine delle 4 partite il punteggio è pari la partita finisce in parità
+
+# eLE, la classifica della Bazzica
+
+L'eLE è il nostro Elo: un punteggio personale che sale quando si vince e scende quando si perde, tanto più
+quanto il risultato è inatteso. Si gioca con un **account** (nome utente e password); chi gioca come ospite
+può farlo come sempre, ma senza eLE.
+
+## Quali partite contano
+- Contano solo le partite in cui all'avvio i 4 posti sono occupati da **4 account diversi**: niente bot, niente
+  ospiti, niente più posti dallo stesso giocatore (hot-seat). La stanza del tavolo mostra "Partita valutata eLE"
+  oppure il motivo per cui non lo è.
+- Le partite interrotte (terminate a mano o rimaste senza giocatori) non contano.
+- Tutte le varianti, con o senza Margherita Hack, contano allo stesso modo: c'è un solo eLE.
+
+## Il calcolo
+- Si parte da **1550**. K vale **40** nelle prime **15** partite valutate (eLE provvisorio, mostrato con un
+  "?", ad esempio 1532?) e poi **30**.
+- eLE di squadra = media dei due compagni. Risultato atteso della squadra:
+  `E = 1 / (1 + 10^((R_avversari - R_squadra) / 400))`.
+- Risultato S: 1 vittoria, 0 sconfitta, 0,5 pareggio. Variazione di squadra: `D = K · (S - E)`, dove ciascun
+  giocatore usa il proprio K.
+- **Ripartizione tra i compagni.** Contano i punti individuali: Scope, Piccole, Grandi (una Scopa per carta),
+  assi Avogadro e Scope di Bazzica fatte da quel giocatore. Carte, denari, primiera, 7 e re bello, 2 di denari,
+  Napola e carte residue sono di squadra e non contano.
+  - Una Bazzica conta per chi l'ha chiamata, ma solo per le Scope **riscosse**: quelle girate subito e quelle
+    del credito pagato dopo, anche con una presa del compagno. Il credito si paga nell'ordine in cui le Bazziche
+    sono state chiamate; il credito perso a fine Mano non conta. Le carte girate per pagare il credito non
+    contano per chi fa la presa.
+  - **Carta passata dal compagno.** Se una Scopa, una Piccola, una Grande o gli assi Avogadro si prendono
+    giocando la carta ricevuta dal compagno nello scambio di quel Turno, i punti vanno **metà a chi gioca e
+    metà al compagno**. Lo stesso per una Bazzica, se la carta ricevuta è stata decisiva (con le carte che si
+    avevano prima dello scambio non c'era una Bazzica di quel valore): le sue Scope riscosse e il bonus della
+    Bazzica da 7 si dividono a metà.
+  - `q = (p_giocatore + 3) / (p_giocatore + p_compagno + 6)`.
+  - Vittoria: `variazione = D · (1 + 0,5 · (2q - 1))`; sconfitta: `variazione = D · (1 - 0,5 · (2q - 1))`.
+    Chi ha fatto più punti guadagna di più quando si vince e perde di meno quando si perde.
+  - Pareggio: come la vittoria se D ≥ 0, come la sconfitta se D < 0.
+
+> ## ⭐ La regola dello spettacolo
+> **La Bazzica è lo sport aziendale più spettacolare di tutti.** Il pubblico vuole partite tirate: una
+> vittoria troppo larga non soddisfa le aspettative e quindi vale meno.
+>
+> Con i punteggi finali A e B: `r = |A - B| / (|A| + |B|)`.
+> Il **guadagno dei vincitori** si moltiplica per:
+> - **1** se r ≤ 0,2 (per esempio 30 a 20);
+> - un valore che scende in linea retta da 1 a **0,25** tra r = 0,2 e r = 0,6;
+> - **0,25** se r ≥ 0,6 (per esempio 40 a 10).
+>
+> I perdenti perdono comunque la loro quota intera. Stravincere non conviene: *poco spettacolo, il pubblico
+> non gradisce!*
+
+- **Bonus spettacolo** (individuali, sommati alla fine): **+3** per ogni Napoleone (a ciascuno dei due compagni)
+  e **+1** per ogni Bazzica da 7 Scope riscossa per intero. I bonus si moltiplicano per `2 · (1 - E)` della
+  propria squadra, limitato tra 0,5 e 1,5: valgono di più per gli sfavoriti.
+- **Abbandono.** Chi è stato sostituito da un bot (uscita o inattività) e non ha ripreso il posto prima della
+  fine prende la sconfitta piena, `K · (0 - E)`, comunque finisca la partita, senza ripartizione, spettacolo
+  né bonus. I punti fatti dal bot al suo posto contano per quel posto nella ripartizione del compagno. Gli altri
+  tre giocatori vengono valutati normalmente ma con K dimezzato (una sola volta, anche se escono in due). Chi
+  riprende il posto prima della fine è come se non fosse mai uscito.
+- L'eLE si conserva con i decimali e si mostra arrotondato all'intero.
+
+Esempio: quattro giocatori a 1550 non provvisori, finisce 30 a 20. E = 0,5, quindi D = 30 · 0,5 = **+15**
+per i vincitori e −15 per i perdenti; con r = 0,2 lo spettacolo è pieno. Se tra i vincitori uno ha fatto 12
+punti individuali e l'altro 6, q = 15/24 = 0,625: il primo prende +16,9 e il secondo +13,1.
+
+Tutti i parametri sono in `bazzica/server/ele.py`. Se si cambiano, `python -m bazzica.admin ricalcola` rifà
+la classifica da zero, partita per partita, con i dati salvati.

@@ -13,6 +13,8 @@ from ..engine import (preset, VARIANTI, new_game, legal_actions, apply_inplace, 
                       FASE_FINE_MANO, FASE_FINE_PARTITA, FASE_SCAMBIO, FASE_GIOCO)
 from ..engine.game import ev
 from ..bots import HeuristicAgent
+from . import ele as ELE
+from .account import Account, account_da_identita, normalizza_nome
 from .config import Config
 from .log import GameLogger
 from .storico import Storico
@@ -64,6 +66,9 @@ class Tavolo:
         self.attesa: dict = {}                 # token -> secondi in cui tocca a lui senza che agisca
         self.disconnesso_da: dict = {}         # token -> time.monotonic() della disconnessione
         self.ultimo_controllo = None           # ultimo controllo dell'inattività
+        self.valutata = False                  # partita valutata eLE (deciso all'avvio)
+        self.raccoglitore = None               # statistiche per posto della partita valutata
+        self.esito_ele = None                  # variazioni di eLE dell'ultima partita valutata
 
     # ------------------------------------------------------------------ info
     def tokens_umani(self):
@@ -126,10 +131,71 @@ class Tavolo:
             "spettatori_ammessi": self.spettatori_ammessi,
             "stato": self.stato, "owner_nome": self.m.nome_di(self.owner),
             "posti": [None if p is None else {"tipo": p["tipo"], "nome": p["nome"], "avatar": p.get("avatar"),
-                                               "connesso": p["tipo"] == "bot" or self.m.connesso(p["token"])}
+                                               "connesso": p["tipo"] == "bot" or self.m.connesso(p["token"]),
+                                               **self.m.ele_pubblico(p.get("account_id"))}
                       for p in self.posti],
             "punteggi": list(self.st.punteggi) if self.st else None,
+            "valutata": self.info_valutazione(),
+            "anteprima_ele": self.anteprima_ele(),
         }
+
+    # ------------------------------------------------------------------ eLE
+    def valutazione(self):
+        """(valutabile, motivo): serve che i 4 posti siano di 4 account diversi (niente bot, ospiti
+        o più posti dallo stesso giocatore)."""
+        if any(p is None for p in self.posti):
+            return False, "Servono 4 giocatori con account"
+        for s, p in enumerate(self.posti):
+            if p["tipo"] == "bot":
+                return False, f"C'è un bot ({NOMI_POSTI[s]})"
+        for p in self.posti:
+            if not p.get("account_id"):
+                return False, f"{p['nome']} gioca come ospite"
+        if len({p["token"] for p in self.posti}) < 4 or len({p["account_id"] for p in self.posti}) < 4:
+            return False, "Un giocatore occupa più posti"
+        return True, ""
+
+    def info_valutazione(self):
+        if self.stato == "in_corso":
+            return {"si": self.valutata, "motivo": "" if self.valutata else "Partita non valutata"}
+        si, motivo = self.valutazione()
+        return {"si": si, "motivo": motivo}
+
+    def anteprima_ele(self):
+        """eLE delle squadre e probabilità di vittoria, se tutti e 4 i posti hanno un account."""
+        ids = []
+        for p in self.posti:
+            aid = (p or {}).get("account_id") or ((p or {}).get("sostituisce") or {}).get("account_id")
+            if not aid:
+                return None
+            ids.append(aid)
+        valori = [self.m.ele_cache_di(a)["ele"] for a in ids]
+        sq = [(valori[0] + valori[2]) / 2, (valori[1] + valori[3]) / 2]
+        return {"ele_squadre": [round(x) for x in sq], "probabilita": round(ELE.atteso(sq[0], sq[1]), 3)}
+
+    def valuta_fine(self, vincitore, punteggi):
+        """Aggiorna l'eLE a fine partita; restituisce l'evento pubblico ``ele`` (o None)."""
+        if not self.valutata or not self.raccoglitore:
+            return None
+        posti = []
+        for s, p in enumerate(self.posti):
+            sost = p.get("sostituisce")
+            aid = sost["account_id"] if sost else p.get("account_id")
+            if not aid:
+                return None   # non dovrebbe succedere: la partita era valutata all'avvio
+            posti.append({"account_id": aid, "abbandono": bool(sost), "stat": self.raccoglitore.posti[s]})
+        risultati = self.m.storico.registra_valutazione(self.partita_id, punteggi, vincitore, posti)
+        variazioni = []
+        for s, r in enumerate(risultati):
+            self.m.aggiorna_ele_cache(r["account_id"], r["dopo"], r["partite"])
+            p = self.posti[s]
+            nome = p["sostituisce"]["nome"] if p.get("sostituisce") else p["nome"]
+            variazioni.append({"posto": s, "nome": nome, "prima": round(r["prima"], 2), "dopo": round(r["dopo"], 2),
+                               "delta": round(r["delta"], 2), "esito": r["esito"],
+                               "provvisorio": ELE.provvisorio(r["partite"]), "dettaglio": r["dettaglio"]})
+        self.esito_ele = variazioni
+        return ev("ele", variazioni=variazioni,
+                  spettacolo=round(ELE.moltiplicatore_spettacolo(punteggi[0], punteggi[1]), 4))
 
     # ------------------------------------------------------------------ lobby
     def siedi(self, token, posto, nome, avatar=None):
@@ -139,7 +205,15 @@ class Tavolo:
             raise ValueError("Posto occupato")
         if avatar not in AVATAR:
             avatar = self.m.avatar.get(token) or AVATAR[posto]
-        self.posti[posto] = {"tipo": "umano", "token": token, "nome": nome[:24] or "Giocatore", "avatar": avatar}
+        posto_d = {"tipo": "umano", "token": token, "nome": nome[:24] or "Giocatore", "avatar": avatar}
+        aid = account_da_identita(token)
+        if aid and not any(p.get("account_id") for p in (self.posti[s] for s in self.posti_di(token))):
+            # il primo posto di un account è il giocatore dell'account, con il suo nome
+            posto_d["nome"] = self.m.nome_di(token)
+            posto_d["account_id"] = aid
+        elif self.m.nome_riservato(posto_d["nome"]):
+            raise ValueError("Questo nome appartiene a un account: scegline un altro")
+        self.posti[posto] = posto_d
 
     def alzati(self, token, posto):
         if self.stato != "lobby":
@@ -174,12 +248,18 @@ class Tavolo:
         self.attesa = {}
         self.disconnesso_da = {}
         self.ultimo_controllo = None
+        self.valutata, _ = self.valutazione()
+        self.raccoglitore = ELE.Raccoglitore(rules) if self.valutata else None
+        self.esito_ele = None
         self.logger = GameLogger(self.m.cartella_log, self.nome, rules.descrizione(), self.nomi(), self.squadre)
         self.logger.nota(f"Seed: {seed}")
         giocatori = [{"nome": p["nome"], "bot": p["tipo"] == "bot", "posto": NOMI_POSTI[s],
-                      "squadra": self.squadre[s % 2]} for s, p in enumerate(self.posti)]
+                      "squadra": self.squadre[s % 2], "account": bool(p.get("account_id"))}
+                     for s, p in enumerate(self.posti)]
         self.partita_id = self.m.storico.nuova_partita(self.nome, self.variante, self.margherita, giocatori,
-                                                       self.logger.path)
+                                                       self.logger.path, valutata=self.valutata)
+        if self.valutata:
+            self.logger.nota("Partita valutata eLE")
         return events
 
     def termina(self, motivo="interrotta", da=None):
@@ -209,7 +289,8 @@ class Tavolo:
         for s in self.posti_di(token):
             p = self.posti[s]
             self.posti[s] = {"tipo": "bot", "nome": f"{p['nome']} (bot)"[:30], "avatar": AVATAR_BOT,
-                             "sostituisce": {"token": token, "nome": p["nome"], "avatar": p.get("avatar")}}
+                             "sostituisce": {"token": token, "nome": p["nome"], "avatar": p.get("avatar"),
+                                             "account_id": p.get("account_id")}}
             self.agents[s] = HeuristicAgent(seed=random.randrange(1 << 30))
             events.append(ev("sostituito", seat=s, nome=p["nome"], motivo=motivo))
         self.ack.discard(token)
@@ -258,6 +339,8 @@ class Tavolo:
             for s in posti:
                 vecchio = self.posti[s]["sostituisce"]
                 self.posti[s] = {"tipo": "umano", "token": token, "nome": vecchio["nome"], "avatar": vecchio["avatar"]}
+                if vecchio.get("account_id"):
+                    self.posti[s]["account_id"] = vecchio["account_id"]
                 self.agents.pop(s, None)
                 events.append(ev("rientrato", seat=s, nome=vecchio["nome"]))
             self.attesa[token] = 0.0
@@ -366,6 +449,9 @@ class Tavolo:
             "terminata_da": self.terminata_da,
             "timer": self.info_timer(),
             "spettatori": self.nomi_spettatori(),
+            "ele": [self.m.ele_pubblico((p or {}).get("account_id")) or None for p in self.posti],
+            "valutata": self.valutata,
+            "esito_ele": self.esito_ele,
         }
 
     # ------------------------------------------------------------------ timer
@@ -550,9 +636,10 @@ class Tavolo:
     async def gestisci_eventi(self, events):
         self.ultimo_evento = self.ultima_attivita = time.monotonic()
         self.versione += 1
-        if self.logger:
-            self.logger.scrivi(events)
+        extra = []
         for e in events:
+            if self.raccoglitore is not None:
+                self.raccoglitore.evento(e)
             if e["tipo"] == "fine_mano" and self.partita_id:
                 self.m.storico.registra_mano(self.partita_id, e["riepilogo"])
             if e["tipo"] == "fine_partita" and self.partita_id:
@@ -560,6 +647,17 @@ class Tavolo:
                 esito = "pari" if v == "pari" else self.squadre[v]
                 self.m.storico.chiudi_partita(self.partita_id, esito, e["punteggi"])
                 self.stato = "finita"
+                try:
+                    ev_ele = self.valuta_fine(v, e["punteggi"])
+                except Exception as ex:  # pragma: no cover - l'eLE non deve mai bloccare la partita
+                    ev_ele = None
+                    if self.logger:
+                        self.logger.nota(f"ERRORE nel calcolo dell'eLE: {ex!r}")
+                if ev_ele:
+                    extra.append(ev_ele)
+        events = list(events) + extra
+        if self.logger:
+            self.logger.scrivi(events)
         self.aggiorna_timer()
         await self.invia_eventi(events)
         await self.invia_tutto()
@@ -724,6 +822,35 @@ class Manager:
         self.pausa_striscia = 1.0
         self.timer_scambio = timer_scambio
         self.timer_giocata = timer_giocata
+        self.account = Account(self.storico, self.config.sessione_giorni)
+        self.ele_cache: dict[int, dict] = {}     # account_id -> {ele, partite}
+
+    # ------------------------------------------------------------------ account ed eLE
+    def ele_cache_di(self, account_id):
+        if account_id not in self.ele_cache:
+            r = self.storico.ele_di([account_id])[account_id]
+            self.ele_cache[account_id] = {"ele": r["ele"], "partite": r["partite"]}
+        return self.ele_cache[account_id]
+
+    def aggiorna_ele_cache(self, account_id, ele, partite):
+        self.ele_cache[account_id] = {"ele": ele, "partite": partite}
+
+    def ele_pubblico(self, account_id):
+        """eLE mostrato accanto al nome (intero) e segno di provvisorio; {} per bot e ospiti."""
+        if not account_id:
+            return {}
+        e = self.ele_cache_di(account_id)
+        return {"ele": round(e["ele"]), "provvisorio": ELE.provvisorio(e["partite"])}
+
+    def info_account(self, token):
+        aid = account_da_identita(token)
+        if not aid:
+            return None
+        return {"nome": self.nome_di(token), **self.ele_pubblico(aid), "partite": self.ele_cache_di(aid)["partite"]}
+
+    def nome_riservato(self, nome):
+        """Un ospite non può usare il nome di un account."""
+        return bool(normalizza_nome(nome or "")) and self.account.nome_registrato(nome)
 
     def nome_di(self, token):
         return self.nomi.get(token, "?")
@@ -750,14 +877,28 @@ class Manager:
         return [t for t in self.tavoli.values() if token in t.tokens_umani()]
 
     # ------------------------------------------------------------------ connessioni
-    async def connetti(self, token, ws, nome=None, avatar=None):
+    async def connetti(self, token, ws, nome=None, avatar=None, account=None):
         self.conn.setdefault(token, set()).add(ws)
-        if nome:
-            self.nomi[token] = nome
-        if avatar in AVATAR:
-            self.avatar[token] = avatar
-        await ws.send_json({"type": "benvenuto", "token": token, "nome": self.nomi.get(token),
-                            "avatar": self.avatar.get(token)})
+        if account:
+            # connessione con account: il nome è quello dell'account (anche su più dispositivi)
+            self.nomi[token] = account["nome"]
+            if account.get("avatar") in AVATAR:
+                self.avatar[token] = account["avatar"]
+            if avatar in AVATAR and not account.get("avatar"):
+                self.avatar[token] = avatar
+                self.account.imposta_avatar(account["id"], avatar)
+            self.ele_cache.pop(account["id"], None)
+        else:
+            if nome:
+                nome = nome[:24]
+                if self.nome_riservato(nome):
+                    nome = f"{nome[:15]} (ospite)"
+                self.nomi[token] = nome
+            if avatar in AVATAR:
+                self.avatar[token] = avatar
+        # l'identità di un account non si manda al client: il browser conserva il suo token da ospite
+        await ws.send_json({"type": "benvenuto", "token": None if account else token, "nome": self.nomi.get(token),
+                            "avatar": self.avatar.get(token), "account": self.info_account(token)})
         await ws.send_json(self.lobby_msg(token))
         for t in self.tavoli.values():
             if t.stato == "in_corso" and t.sostituiti_di(token):
@@ -870,7 +1011,15 @@ class Manager:
         tipo = msg.get("type")
         tav = self.tavoli.get(msg.get("tavolo")) if msg.get("tavolo") else None
         if tipo == "nome":
-            self.nomi[token] = (msg.get("nome") or "Giocatore")[:24]
+            aid = account_da_identita(token)
+            if aid:
+                if msg.get("avatar") in AVATAR:
+                    self.account.imposta_avatar(aid, msg["avatar"])
+            else:
+                nome = (msg.get("nome") or "Giocatore")[:24]
+                if self.nome_riservato(nome):
+                    raise ValueError("Questo nome appartiene a un account: accedi oppure scegline un altro")
+                self.nomi[token] = nome
             if msg.get("avatar") in AVATAR:
                 self.avatar[token] = msg["avatar"]
                 # aggiorna l'avatar sui posti dei tavoli non ancora iniziati
