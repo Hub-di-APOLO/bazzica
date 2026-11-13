@@ -26,7 +26,7 @@
       <h1 class="logo">Bazzica</h1>
       <p class="sottotitolo">Il gioco di carte, in rete locale o sullo stesso PC</p>
       <form id="form-nome">
-        <label>Come ti chiami?
+        <label id="label-nome">Come ti chiami?
           <input id="inp-nome" maxlength="24" autocomplete="off" required placeholder="Il tuo nome">
         </label>
         <div class="etichetta">Scegli il tuo avatar</div>
@@ -51,6 +51,36 @@
     </div>
   </section>
 
+  <!-- ===================== Accesso (account) ===================== -->
+  <section id="scr-accesso" class="screen">
+    <div class="pannello centrato">
+      <h1 class="logo">Bazzica</h1>
+      <p class="sottotitolo">Entra con il tuo account per avere l'eLE, la classifica della Bazzica.</p>
+      <div class="schede-accesso" role="tablist">
+        <button type="button" class="scheda attiva" id="tab-accedi" role="tab">Accedi</button>
+        <button type="button" class="scheda" id="tab-registrati" role="tab">Nuovo account</button>
+      </div>
+      <form id="form-accesso" autocomplete="on">
+        <label>Nome utente
+          <input id="acc-nome" name="username" maxlength="20" autocomplete="username" autocapitalize="off" spellcheck="false" required>
+        </label>
+        <label>Password
+          <input id="acc-password" name="password" type="password" maxlength="128" autocomplete="current-password" required>
+        </label>
+        <label class="nascosto" id="acc-ripeti-label">Ripeti la password
+          <input id="acc-ripeti" type="password" maxlength="128" autocomplete="new-password">
+        </label>
+        <p class="nota nascosto" id="acc-regole">Da 3 a 20 caratteri (lettere, cifre, spazi, _ e -); password di almeno 8 caratteri.
+          Non si può recuperare per email: se la dimentichi, chiedi a chi gestisce il server.</p>
+        <p class="errore-codice nascosto" id="acc-errore"></p>
+        <button class="btn primario" type="submit" id="acc-invia">Accedi</button>
+      </form>
+      <div class="separatore"><span>oppure</span></div>
+      <button class="btn" type="button" id="btn-ospite">Gioca come ospite</button>
+      <p class="nota">Le partite con ospiti o bot non cambiano l'eLE.</p>
+    </div>
+  </section>
+
   <!-- ===================== Lobby ===================== -->
   <section id="scr-lobby" class="screen">
     <header class="barra">
@@ -58,7 +88,9 @@
       <div class="spazio"></div>
       <span id="lobby-nome" class="chip"></span>
       <button class="btn" id="btn-cambia-nome">Cambia nome</button>
+      <button class="btn" id="btn-classifica">Classifica</button>
       <button class="btn" id="btn-storico">Storico</button>
+      <button class="btn" id="btn-account">Accedi</button>
     </header>
     <div class="lobby-grid">
       <div class="pannello">
@@ -88,7 +120,10 @@
       <span id="stanza-stato" class="chip"></span>
     </header>
     <div class="stanza">
-      <div class="posti-croce" id="posti-croce"></div>
+      <div>
+        <div class="posti-croce" id="posti-croce"></div>
+        <p class="valutata" id="stanza-valutata"></p>
+      </div>
       <div class="pannello stanza-impostazioni">
         <h3>Impostazioni</h3>
         <label>Variante <select id="stanza-variante"></select></label>
@@ -174,6 +209,15 @@
       </div>
     </div>
     <div id="fx" class="fx-layer"></div>
+  </section>
+
+  <!-- ===================== Classifica ===================== -->
+  <section id="scr-classifica" class="screen">
+    <header class="barra">
+      <button class="btn" id="btn-classifica-esci">&larr; Lobby</button>
+      <h2>Classifica eLE</h2>
+    </header>
+    <div class="pannello classifica" id="classifica-contenuto"></div>
   </section>
 
   <!-- ===================== Storico ===================== -->

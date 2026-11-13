@@ -1,5 +1,5 @@
 // Schermata di gioco: rendering del tavolo, interazioni, animazioni degli eventi, hot-seat.
-import { el, $, $$, sleep, POSTI, SQUADRE, FRASI, nomeCarta, nomiCarte, val, squadra, toast } from "./util.js";
+import { el, $, $$, sleep, POSTI, SQUADRE, FRASI, nomeCarta, nomiCarte, val, squadra, toast, testoEle, conSegno } from "./util.js";
 import { carta, dorso } from "./cards.js";
 import { suona } from "./audio.js";
 import * as fx from "./anim.js";
@@ -355,6 +355,8 @@ export class Partita {
       if (obs.scambio.veloci[s]) badges.append(el("span", { class: "g-badge veloce" }, "Veloce! 🔥"));
       else if (obs.scambio.passati[s]) badges.append(el("span", { class: "g-badge passato" }, "Passato"));
     }
+    const ele = info.ele && info.ele[s];
+    if (ele) badges.prepend(el("span", { class: "g-badge ele", title: ele.provvisorio ? "eLE provvisorio (prime 15 partite)" : "eLE" }, testoEle(ele)));
     g.append(av, el("div", {}, el("div", { class: "g-nome" }, nome), badges.childNodes.length ? badges : null));
     return g;
   }
@@ -802,11 +804,38 @@ export class Partita {
     const box = el("div", {},
       el("p", { class: "grande-testo" }, titolo),
       el("p", {}, `${this.sq()[0]} ${obs.punteggi[0]} — ${obs.punteggi[1]} ${this.sq()[1]} dopo ${obs.mano_n} Mani`),
+      info.esito_ele ? this.riquadroEle(info.esito_ele, conSuono) : null,
       el("div", { class: "riga-btn" },
         ultimo ? el("button", { class: "btn", onclick: () => { this.modalRiepilogo = false; this.mostraRiepilogo(ultimo, info); } }, "Riepilogo ultima Mano") : null,
         el("button", { class: "btn primario", onclick: () => { this.app.chiudiModal(); this.app.vaiStanza(this.tid); } }, "Torna al tavolo"),
         el("button", { class: "btn", onclick: () => { this.app.chiudiModal(); this.app.mostra("lobby"); } }, "Lobby")));
     this.app.apriModal(box);
+  }
+
+  /** Variazioni di eLE a fine partita, con il conteggio animato e il dettaglio del calcolo. */
+  riquadroEle(variazioni, anima = true) {
+    const num = (x) => String(Number(Number(x).toFixed(2))).replace(".", ",");
+    const box = el("div", { class: "esito-ele" }, el("h4", {}, "eLE"));
+    const poco = variazioni.some((v) => v.esito === "vittoria" && v.dettaglio.spettacolo < 1);
+    if (poco) box.append(el("p", { class: "poco-spettacolo" }, "🥱 Poco spettacolo! Il pubblico non gradisce"));
+    const ordine = [...variazioni].sort((a, b) => (a.posto % 2) - (b.posto % 2) || a.posto - b.posto);
+    for (const v of ordine) {
+      const d = v.dettaglio;
+      let spiega;
+      if (d.abbandono) spiega = `${conSegno(v.delta)}: ha lasciato la partita (sconfitta piena)`;
+      else {
+        spiega = `${conSegno(v.delta)}: ${conSegno(d.quota_squadra)} squadra, ripartizione ×${num(d.ripartizione)}, spettacolo ×${num(d.spettacolo)}`;
+        if (d.bonus) spiega += `, bonus ${conSegno(d.bonus)}`;
+        if (d.fattore_k < 1) spiega += " (K dimezzato per un abbandono)";
+      }
+      const valore = el("span", { class: "ele-valore" }, Math.round(anima ? v.prima : v.dopo) + (v.provvisorio ? "?" : ""));
+      const delta = el("span", { class: "ele-delta " + (v.delta > 0 ? "su" : v.delta < 0 ? "giu" : "") + (anima ? " entra" : "") },
+        conSegno(v.delta));
+      box.append(el("div", { class: `riga-ele team${v.posto % 2}` + (this.miei.includes(v.posto) ? " mia" : "") },
+        el("span", { class: "ele-nome" }, v.nome), valore, delta, el("small", { class: "ele-dett" }, spiega)));
+      if (anima) contaFino(valore, v.prima, v.dopo, v.provvisorio ? "?" : "");
+    }
+    return box;
   }
 
   // ------------------------------------------------------------ animazioni eventi
@@ -1258,4 +1287,16 @@ export class Partita {
     await sleep(500);
     await this.effettiFinali(e);
   }
+}
+
+/** Fa scorrere un numero da ``da`` ad ``a`` (eLE a fine partita). */
+function contaFino(nodo, da, a, suffisso = "", durata = 1400) {
+  const inizio = performance.now() + 400;
+  const passo = (ora) => {
+    const t = Math.min(1, Math.max(0, (ora - inizio) / durata));
+    const k = 1 - (1 - t) ** 3;
+    nodo.textContent = Math.round(da + (a - da) * k) + suffisso;
+    if (t < 1) requestAnimationFrame(passo);
+  };
+  requestAnimationFrame(passo);
 }

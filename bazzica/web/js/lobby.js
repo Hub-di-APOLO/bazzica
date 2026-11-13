@@ -1,5 +1,5 @@
 // Lobby (elenco tavoli, creazione) e stanza del tavolo (posti, bot, impostazioni).
-import { el, $, POSTI, SQUADRE, VARIANTI_DESC, store, AVATAR } from "./util.js";
+import { el, $, POSTI, SQUADRE, VARIANTI_DESC, store, AVATAR, testoEle } from "./util.js";
 
 export function riempiVarianti(select, varianti, scelta) {
   select.innerHTML = "";
@@ -16,13 +16,15 @@ export function renderLobby(app, tavoli) {
   for (const t of tavoli) {
     const occ = t.posti.filter(Boolean).length;
     const stato = { lobby: "In preparazione", in_corso: "Partita in corso", finita: "Partita finita" }[t.stato];
-    const giocatori = t.posti.map((p, i) => p ? `${POSTI[i]}: ${p.nome}` : null).filter(Boolean).join(" · ");
+    const giocatori = t.posti.map((p, i) => p ? `${POSTI[i]}: ${p.nome}${p.ele ? ` (${testoEle(p)})` : ""}` : null)
+      .filter(Boolean).join(" · ");
     const mio = t.miei && t.miei.length;
     const sostituito = t.stato === "in_corso" && t.sostituiti && t.sostituiti.length;
     box.append(el("div", { class: "tavolo-item" },
       el("div", { class: "ti-info" },
         el("div", { class: "ti-nome" }, t.nome),
-        el("div", { class: "ti-dett" }, `${t.variante}${t.margherita ? " + Margherita Hack" : ""} — ${stato} — ${occ}/4`),
+        el("div", { class: "ti-dett" }, `${t.variante}${t.margherita ? " + Margherita Hack" : ""} — ${stato} — ${occ}/4`,
+          t.valutata && t.valutata.si ? el("span", { class: "tag-ele" }, "eLE") : null),
         giocatori ? el("div", { class: "ti-dett" }, giocatori) : null),
       t.guardabile ? el("button", { class: "btn", onclick: () => app.guarda(t.id) }, "👀 Guarda") : null,
       sostituito ? el("button", { class: "btn primario", onclick: () => app.riprendi(t.id) }, "Riprendi il posto") : null,
@@ -46,6 +48,7 @@ export function renderStanza(app, t) {
       el("div", { class: "pl-nome-posto" }, `${POSTI[s]} · ${(t.squadre || SQUADRE)[s % 2]}`));
     if (p) {
       box.append(el("div", { class: "pl-occ" + (mio ? " mio" : "") }, el("span", { class: "pl-av" }, p.avatar || (p.tipo === "bot" ? "🤖" : "🙂")), p.nome,
+        p.ele ? el("span", { class: "chip-ele", title: p.provvisorio ? "eLE provvisorio (prime 15 partite)" : "eLE" }, testoEle(p)) : null,
         p.tipo === "umano" && !p.connesso ? el("small", {}, " (disconnesso)") : null));
       if (modificabile && (p.tipo === "bot" || mio || t.owner)) {
         box.append(el("div", { class: "riga-btn" },
@@ -62,7 +65,15 @@ export function renderStanza(app, t) {
     }
     croce.append(box);
   }
-  croce.append(el("div", { class: "centro" }, el("div", { class: "vs" }, (t.squadre || SQUADRE)[0], el("b", {}, "VS"), (t.squadre || SQUADRE)[1])));
+  const sq = t.squadre || SQUADRE;
+  const ant = t.anteprima_ele;
+  const riga = (i) => el("span", { class: "vs-squadra" }, sq[i],
+    ant ? el("small", { class: "vs-ele" }, `eLE ${ant.ele_squadre[i]} · ${Math.round((i ? 1 - ant.probabilita : ant.probabilita) * 100)}%`) : null);
+  croce.append(el("div", { class: "centro" }, el("div", { class: "vs" }, riga(0), el("b", {}, "VS"), riga(1))));
+  const val = $("#stanza-valutata");
+  const v = t.valutata || { si: false, motivo: "" };
+  val.className = "valutata " + (v.si ? "si" : "no");
+  val.textContent = v.si ? "⭐ Partita valutata eLE" : `Partita non valutata eLE${v.motivo ? ` — ${v.motivo}` : ""}`;
 
   // impostazioni: le cambia chi ha creato il tavolo o chi è seduto, a partita non in corso
   const puo = t.gestore && modificabile;

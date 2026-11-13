@@ -116,6 +116,10 @@ def descrivi_evento(e: dict, nomi_giocatori=None, squadre=NOMI_SQUADRE) -> str |
         v = e["vincitore"]
         esito = "PAREGGIO" if v == "pari" else f"vince {squadre[v]}"
         return f"\n##### Fine partita dopo {e['mani']} Mani: {esito} ({e['punteggi'][0]} - {e['punteggi'][1]}) #####"
+    if t == "ele":
+        righe = [f"  {v['nome']}: {v['prima']:.1f} -> {v['dopo']:.1f} ({v['delta']:+.1f}, {v['esito']})"
+                 for v in e["variazioni"]]
+        return f"eLE (moltiplicatore spettacolo {e['spettacolo']:g}):\n" + "\n".join(righe)
     if t == "sostituito":
         motivo = {"uscito": "è uscito dalla partita", "inattivo": "è inattivo da troppo tempo",
                   "disconnesso": "è disconnesso da troppo tempo"}.get(e.get("motivo"), "è uscito")

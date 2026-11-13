@@ -24,15 +24,18 @@ export class Rete {
   }
 
   connetti() {
+    // con un account il token di sessione si manda come primo messaggio, mai nell'indirizzo
+    const sessione = store("bazzica_sessione") || "";
     const url = urlWebSocket(location, {
       token: this.token, nome: store("bazzica_nome") || "", avatar: store("bazzica_avatar") || "",
-      codice: store("bazzica_codice") || "",
+      codice: store("bazzica_codice") || "", auth: sessione ? "1" : "",
     });
     clearTimeout(this.timerRiconnessione);
     this.bloccato = false;
     const ws = new WebSocket(url);
     this.ws = ws;
     ws.onopen = () => {
+      if (sessione) ws.send(JSON.stringify({ type: "sessione", sessione }));
       this.tentativi = 0;
       $("#ov-connessione").classList.add("nascosto");
       const q = this.coda; this.coda = [];

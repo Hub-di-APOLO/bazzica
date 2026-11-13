@@ -26,6 +26,13 @@ Variabili (tutte facoltative):
   BAZZICA_INATTIVITA_MIN       minuti dopo cui un giocatore inattivo (tocca
                                a lui e non gioca) o disconnesso viene
                                sostituito da un bot; 0 = mai                (5)
+  BAZZICA_SESSIONE_GIORNI      giorni dopo l'ultimo uso in cui scade una
+                               sessione (login) di un account               (90)
+  BAZZICA_LOGIN_MAX_FALLITI    login falliti (per IP e per nome utente)
+                               dopo cui si blocca; 0 = nessun blocco        (5)
+  BAZZICA_LOGIN_FINESTRA_MIN   minuti in cui si contano i login falliti     (15)
+  BAZZICA_LOGIN_BLOCCO_MIN     minuti di blocco dopo troppi login falliti   (15)
+  BAZZICA_REGISTRAZIONI_ORA    nuovi account all'ora da uno stesso IP       (5)
 Per i limiti numerici 0 significa "nessun limite".
 """
 from __future__ import annotations
@@ -95,6 +102,11 @@ class Config:
     tavolo_inattivo_min: float = 180.0
     pausa_max_ore: float = 12.0
     inattivita_min: float = 5.0
+    sessione_giorni: float = 90.0
+    login_max_falliti: int = 5
+    login_finestra_min: float = 15.0
+    login_blocco_min: float = 15.0
+    registrazioni_ora: int = 5
 
     @classmethod
     def da_ambiente(cls, env=None) -> "Config":
@@ -116,6 +128,11 @@ class Config:
             tavolo_inattivo_min=_num(env, "BAZZICA_TAVOLO_INATTIVO_MIN", 180.0, float),
             pausa_max_ore=_num(env, "BAZZICA_PAUSA_MAX_ORE", 12.0, float),
             inattivita_min=_num(env, "BAZZICA_INATTIVITA_MIN", 5.0, float),
+            sessione_giorni=_num(env, "BAZZICA_SESSIONE_GIORNI", 90.0, float),
+            login_max_falliti=_num(env, "BAZZICA_LOGIN_MAX_FALLITI", 5),
+            login_finestra_min=_num(env, "BAZZICA_LOGIN_FINESTRA_MIN", 15.0, float),
+            login_blocco_min=_num(env, "BAZZICA_LOGIN_BLOCCO_MIN", 15.0, float),
+            registrazioni_ora=_num(env, "BAZZICA_REGISTRAZIONI_ORA", 5),
         )
 
     @property

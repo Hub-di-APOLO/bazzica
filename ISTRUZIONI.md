@@ -32,6 +32,13 @@ Squadre: Nord e Sud contro Est e Ovest. Nella stanza del tavolo si possono scegl
 
 All'ingresso ognuno sceglie nome e avatar (12 disponibili); i bot hanno l'avatar del robot.
 
+## Account ed eLE
+- All'ingresso si può **accedere** con un account (nome utente e password), **crearne uno nuovo** oppure **giocare come ospite** come prima. L'accesso resta ricordato sul dispositivo; lo stesso account funziona su più dispositivi (PC e telefono). "Esci" nella lobby esce dall'account solo su quel dispositivo.
+- Con l'account il nome al tavolo è quello dell'account; si sceglie solo l'avatar. Un ospite non può usare il nome di un account.
+- Le partite con 4 account diversi (niente bot, ospiti o hot-seat) sono **valutate eLE**: la stanza lo dice, con l'eLE delle squadre e la probabilità di vittoria. A fine partita compare la variazione di ciascuno con il dettaglio del calcolo. Regole complete nel `README.md` (il regolamento), capitolo 12 (eLE).
+- La pagina **Classifica** (nella lobby) mostra l'eLE di tutti e il grafico dell'andamento.
+- Password dimenticata, sessioni da chiudere, ricalcolo della classifica: `py -m bazzica.admin elenco | password NOME | revoca NOME | ricalcola` (sul NAS dentro il container, vedi `docs/deploy-truenas.md`).
+
 ## Giocare sullo stesso PC (hot-seat)
 Dallo stesso browser siediti su più posti: dal secondo in poi si apre una finestra per il nome e l'avatar del nuovo giocatore. Durante la partita, quando tocca a un altro giocatore umano compare la schermata **"Passa a …"**: passa il dispositivo e tocca per mostrare le carte. Anche lo scambio segreto della variante Heisenberg resta segreto.
 
@@ -57,7 +64,7 @@ Dallo stesso browser siediti su più posti: dal secondo in poi si apre una fines
 
 ## Log e storico
 - Un log di debug per partita in `logs/` (contiene anche le mani di tutti: non mostrarlo ai giocatori!).
-- Lo storico (SQLite) è in `data/storico.db`; si consulta dalla pagina **Storico** della lobby.
+- Lo storico (SQLite) è in `data/storico.db`; si consulta dalla pagina **Storico** della lobby. Nello stesso file ci sono gli account (password solo come hash) e la classifica eLE.
 
 ## Opzioni (variabili d'ambiente)
 Tutte facoltative; su Windows si impostano con `set NOME=valore` prima di `python run.py`. L'elenco completo è in cima a `bazzica/server/config.py`.
@@ -65,6 +72,7 @@ Tutte facoltative; su Windows si impostano con `set NOME=valore` prima di `pytho
 - `BAZZICA_PORTA`, `BAZZICA_HOST`: porta e indirizzo di ascolto (`--port`/`--host` hanno la precedenza).
 - `BAZZICA_DATI`, `BAZZICA_LOG`: cartelle dello storico e dei log.
 - `BAZZICA_CODICE`: codice d'accesso. Se impostato, chi apre il gioco deve inserirlo (una volta per dispositivo).
+- Account: `BAZZICA_SESSIONE_GIORNI` (scadenza delle sessioni, default 90 giorni dall'ultimo uso), `BAZZICA_LOGIN_MAX_FALLITI` e `BAZZICA_LOGIN_BLOCCO_MIN` (dopo 5 login sbagliati blocco di 15 minuti, per IP e per nome utente), `BAZZICA_REGISTRAZIONI_ORA` (nuovi account all'ora per IP, default 5).
 - Limiti contro gli abusi (`BAZZICA_MAX_TAVOLI`, `BAZZICA_MAX_TAVOLI_TOKEN`, `BAZZICA_MAX_CONN_IP`, `BAZZICA_MAX_MESSAGGIO`, `BAZZICA_MAX_MSG_SECONDO`) e pulizia automatica (`BAZZICA_TAVOLO_INATTIVO_MIN`, default 180 minuti per i tavoli non avviati abbandonati; `BAZZICA_PAUSA_MAX_ORE`, default 12 ore per le partite senza nessuno connesso; `BAZZICA_INATTIVITA_MIN`, default 5 minuti prima di sostituire con un bot un giocatore inattivo). 0 = nessun limite.
 
 Stato del server: `http://localhost:8000/api/salute`.
@@ -83,7 +91,9 @@ La simulazione solo-bot gioca 2.000 partite (250 per variante); per una prova ve
 ```
 bazzica/engine/   regole pure (stato, azioni legali, punteggio)
 bazzica/bots/     interfaccia Agent e bot euristico (base per futuri bot LLM)
-bazzica/server/   FastAPI, lobby, WebSocket, log, storico, configurazione (config.py), sicurezza (sicurezza.py)
+bazzica/server/   FastAPI, lobby, WebSocket, log, storico, configurazione (config.py), sicurezza (sicurezza.py),
+                  account (account.py), calcolo eLE (ele.py)
+bazzica/admin.py  comandi di amministrazione: python -m bazzica.admin
 bazzica/web/      interfaccia (HTML/CSS/JS senza build; font Fredoka incluso in web/fonts)
 deploy/truenas/   YAML per TrueNAS e Caddyfile; Dockerfile e requirements-docker.txt nella radice
 tests/            test pytest

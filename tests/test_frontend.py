@@ -63,3 +63,25 @@ def test_frasi_uguali_tra_server_e_pagina():
     assert r.returncode == 0, r.stderr
     assert json.loads(r.stdout) == FRASI
     assert "Che provocateur" in FRASI
+
+
+def test_token_di_sessione_mai_nell_indirizzo_della_websocket():
+    """Il token di sessione viaggia nel primo messaggio, non nell'URL (che finisce nei log dei proxy)."""
+    net = (WEB / "js" / "net.js").read_text(encoding="utf-8")
+    parametri = re.search(r"urlWebSocket\(location, \{(.*?)\}\)", net, re.S).group(1)
+    assert "sessione:" not in parametri and "sessione," not in parametri
+    assert 'type: "sessione"' in net
+
+
+@pytest.mark.skipif(not shutil.which("node"), reason="serve Node.js per eseguire il JavaScript")
+def test_formato_ele_e_variazioni():
+    script = f"""
+      const {{ testoEle, conSegno }} = await import({json.dumps((WEB / "js" / "util.js").as_uri())});
+      console.log(JSON.stringify([
+        testoEle({{ ele: 1532.4, provvisorio: true }}), testoEle({{ ele: 1600.6, provvisorio: false }}), testoEle({{}}),
+        conSegno(16.875), conSegno(-13.125), conSegno(0), conSegno(-0.01), conSegno(3.75, 2),
+      ]));
+    """
+    r = subprocess.run(["node", "--input-type=module", "-e", script], capture_output=True, text=True, timeout=30)
+    assert r.returncode == 0, r.stderr
+    assert json.loads(r.stdout) == ["1532?", "1601", "", "+16,9", "−13,1", "0,0", "0,0", "+3,75"]

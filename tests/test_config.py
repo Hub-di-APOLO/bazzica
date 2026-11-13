@@ -66,3 +66,12 @@ def test_inattivita_da_ambiente():
     assert Config.da_ambiente({}).inattivita_min == 5
     assert Config.da_ambiente({"BAZZICA_INATTIVITA_MIN": "0"}).inattivita_min == 0
     assert Config.da_ambiente({"BAZZICA_INATTIVITA_MIN": "2.5"}).inattivita_min == 2.5
+
+
+def test_parametri_degli_account():
+    c = Config.da_ambiente({})
+    assert (c.sessione_giorni, c.login_max_falliti, c.login_finestra_min, c.login_blocco_min, c.registrazioni_ora) \
+        == (90.0, 5, 15.0, 15.0, 5)
+    c = Config.da_ambiente({"BAZZICA_SESSIONE_GIORNI": "30", "BAZZICA_LOGIN_MAX_FALLITI": "0",
+                            "BAZZICA_LOGIN_BLOCCO_MIN": "5", "BAZZICA_REGISTRAZIONI_ORA": "2"})
+    assert (c.sessione_giorni, c.login_max_falliti, c.login_blocco_min, c.registrazioni_ora) == (30.0, 0, 5.0, 2)

@@ -5,6 +5,8 @@ import { caricaCarte } from "./cards.js";
 import { impostaFileSuoni, isMuto, setMuto } from "./audio.js";
 import { initLobby, renderLobby, renderStanza } from "./lobby.js";
 import { mostraStorico } from "./storico.js";
+import { mostraClassifica } from "./classifica.js";
+import { initAccesso, aggiornaAccount, aggiornaBarra } from "./account.js";
 import { Partita } from "./game.js";
 
 class App {
@@ -17,6 +19,7 @@ class App {
     this.stanza = null;
     this.uscitoDa = null;
     this.attendiTavoloCreato = false;
+    this.account = null;                 // {nome, ele, provvisorio, partite} se si è entrati con un account
     this.partita = new Partita(this);
     this.rete = new Rete((m) => this.messaggio(m));
   }
@@ -25,9 +28,20 @@ class App {
     const d = await caricaCarte();
     impostaFileSuoni(d.suoni);
     initLobby(this);
+    initAccesso(this);
     this.bind();
-    if (!this.nome) this.mostra("nome");
-    else { this.mostra("lobby"); this.rete.connetti(); }
+    // si entra con l'account salvato, come ospite (se scelto) oppure dalla schermata di accesso;
+    // la connessione parte subito, così il codice d'accesso si chiede per primo
+    if (store("bazzica_sessione")) this.mostra("lobby");
+    else if (store("bazzica_ospite") && this.nome) this.mostra("lobby");
+    else this.mostra("accesso");
+    this.rete.connetti();
+  }
+
+  /** Schermata giusta dopo il codice d'accesso o il login. */
+  schermataIniziale() {
+    if (this.account || (store("bazzica_ospite") && this.nome)) return "lobby";
+    return store("bazzica_ospite") ? "nome" : "accesso";
   }
 
   sceltaAvatar(box, scelto, onScelta) {
@@ -48,19 +62,27 @@ class App {
     this.sceltaAvatar($("#scelta-avatar"), this.avatar, (a) => { avatarScelto = a; });
     $("#form-nome").addEventListener("submit", (ev) => {
       ev.preventDefault();
+      if (this.account) {
+        // con un account il nome è quello dell'account: si cambia solo l'avatar
+        this.avatar = avatarScelto;
+        store("bazzica_avatar", avatarScelto);
+        this.rete.invia({ type: "nome", avatar: avatarScelto });
+        this.mostra("lobby");
+        return;
+      }
       const n = $("#inp-nome").value.trim();
       if (!n) return;
-      const primo = !this.nome;
       this.nome = n;
       this.avatar = avatarScelto;
       store("bazzica_nome", n);
       store("bazzica_avatar", avatarScelto);
-      if (primo && !this.rete.ws) this.rete.connetti();
-      else this.rete.invia({ type: "nome", nome: n, avatar: avatarScelto });
+      this.rete.invia({ type: "nome", nome: n, avatar: avatarScelto });
       this.mostra("lobby");
     });
     $("#btn-cambia-nome").addEventListener("click", () => {
       $("#inp-nome").value = this.nome;
+      $("#label-nome").classList.toggle("nascosto", !!this.account);
+      $("#inp-nome").required = !this.account;
       avatarScelto = this.avatar;
       this.sceltaAvatar($("#scelta-avatar"), this.avatar, (a) => { avatarScelto = a; });
       this.mostra("nome");
@@ -75,6 +97,8 @@ class App {
     });
     $("#btn-storico").addEventListener("click", () => { this.mostra("storico"); mostraStorico(); });
     $("#btn-storico-esci").addEventListener("click", () => this.mostra("lobby"));
+    $("#btn-classifica").addEventListener("click", () => { this.mostra("classifica"); mostraClassifica(); });
+    $("#btn-classifica-esci").addEventListener("click", () => this.mostra("lobby"));
     const muto = $("#btn-muto");
     const aggiornaMuto = () => { muto.innerHTML = isMuto() ? "&#128263;" : "&#128266;"; };
     aggiornaMuto();
@@ -93,7 +117,14 @@ class App {
       $("#ov-pausa").classList.add("nascosto");
       this.chiudiModal();
     }
-    if (nome === "lobby") $("#lobby-nome").textContent = `${this.avatar} ${this.nome}`;
+    if (nome === "lobby") {
+      aggiornaBarra(this);
+      if (this.account) aggiornaAccount(this);
+    }
+    if (nome === "nome") {
+      $("#label-nome").classList.toggle("nascosto", !!this.account);
+      $("#inp-nome").required = !this.account;
+    }
   }
 
   apriModal(contenuto, chiudibile = false) {
@@ -216,8 +247,21 @@ class App {
         setTimeout(() => { const i = $("#inp-codice"); i.value = ""; i.focus(); }, 50);
         break;
       case "benvenuto":
-        if (this.schermo === "codice") this.mostra(this.nome ? "lobby" : "nome");
-        if (this.nome && (!m.nome || m.avatar !== this.avatar)) this.rete.invia({ type: "nome", nome: this.nome, avatar: this.avatar });
+        this.account = m.account || null;
+        if (this.account) {
+          if (m.avatar) { this.avatar = m.avatar; store("bazzica_avatar", m.avatar); }
+          else this.rete.invia({ type: "nome", avatar: this.avatar });
+        } else if (this.nome && (!m.nome || m.nome !== this.nome || m.avatar !== this.avatar)) {
+          this.rete.invia({ type: "nome", nome: this.nome, avatar: this.avatar });
+        }
+        if (["codice", "accesso"].includes(this.schermo) || (this.schermo === "lobby" && this.schermataIniziale() !== "lobby")) {
+          this.mostra(this.schermataIniziale());
+        } else if (this.schermo === "lobby") aggiornaBarra(this);
+        break;
+      case "sessione_non_valida":
+        store("bazzica_sessione", null);
+        this.account = null;
+        toast("La sessione è scaduta: accedi di nuovo");
         break;
       case "lobby":
         if (m.varianti) this.varianti = m.varianti;
@@ -255,6 +299,13 @@ class App {
       case "errore":
         if (this.attendiRientro) this.attendiRientro = null;
         toast(m.messaggio);
+        if (!this.account && /appartiene a un account/.test(m.messaggio) && this.schermo === "lobby") {
+          // nome già registrato da un altro giocatore: se ne sceglie un altro
+          this.nome = "";
+          store("bazzica_nome", null);
+          $("#inp-nome").value = "";
+          this.mostra("nome");
+        }
         this.partita.inviato = false;
         if (this.schermo === "gioco") this.partita.render();
         break;

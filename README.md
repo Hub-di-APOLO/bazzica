@@ -1,201 +1,460 @@
-# Bazzica
-Il gioco della Bazzica è una variante del gioco della Scopa, cui si aggiunge il meccanismo della Bazzica, ossia un modo per segnare Scope aggiuntive sulla base delle carte che un giocatore possiede all'inizio di ogni turno.
+# 🏆 Bazzica — Regolamento ufficiale
 
-# Regole della Bazzica Vanilla
+*Lo sport aziendale più spettacolare di tutti i tempi. Altro che calcio.*
 
-## Il mazzo
-La Bazzica si gioca con un mazzo di carte da scopa / briscola.
-Il mazzo è formato da 40 carte suddivise in 4 semi: denari, coppe, spade e bastoni.
-Ogni seme ha tutti i valori da 1 a 10.
-Le carte con valore 1 si chiamano anche assi, quelle con valore 8 si chiamano anche fanti, quelle con valore 9 si chiamano anche cavalli e quelle con valore 10 si chiamano anche re.
-Fanti, cavalli e re sono noti anche come Figure.
+Signore e signori, benvenuti. Quello che state per leggere non è il regolamento di un gioco di carte: è il codice
+d'onore di una disciplina sportiva fatta di nervi saldi, occhiate gelide, silenzi carichi di significato e carte
+sbattute sul tavolo con la potenza di un rigore al novantesimo. La Bazzica nasce come una variante della Scopa, ma
+della Scopa ha soltanto le ossa: ci aggiunge la **Bazzica**, un colpo da campioni che fa segnare Scope in più
+solo guardando le carte che si hanno in mano.
 
-## Il gioco
-La Bazzica si gioca in 2 squadre da 2 giocatori ciascuno.
-I giocatori si distribuiscono attorno ad un tavolo, alternando un membro di una squadra con un membro dell'altra.
-Si definisce un mazziere che mescola e distribuisce le carte.
+Qui non si "gioca a carte". Qui si **scende in campo**.
 
-Una partita di Bazzica si compone di una o più Mani.
-In ogni Mano ciascuna squadra totalizza dei punti (potenzialmente anche in negativo) sulla base delle carte aggiunte al proprio mazzo delle prese ed il gioco termina quando alla fine di una Mano una delle 2 squadre ha totalizzato 21 o più punti ed è in vantaggio sull'altra.
-Se al termine di una Mano entrambe le squadre hanno lo stesso punteggio pari o superiore a 21, si gioca un'ulteriore partita di spareggio. Questo meccanismo procede ad oltranza finchè al termine di una Mano una delle squadre è in vantaggio.
+> Come avviare il server, giocare in rete o dal telefono: vedi [`ISTRUZIONI.md`](ISTRUZIONI.md).
+> Questo documento è il regolamento: quello che vale al tavolo, vero o digitale.
 
-Ogni Mano si compone di 3 Turni.
-Il giocatore che comincia a giocare in ogni turno è quello che si trova a sinistra del mazziere ed il gioco prosegue in senso orario, con il mazziere che fa l'ultima giocata di ogni Turno.
-Il giocatore che a sinistra del mazziere diventa il mazziere nella Mano successiva.
+## Indice
 
-Ogni Turno si compone di 2 Fasi:
-- Distribuzione carte: il mazziere distribuisce 3 carte a giocatore. Durante il primo Turno il mazziere mette anche 4 carte scoperte sul tavolo.
-- Giocate: i giocatori a turno giocano una carta partendo da quello a sinistra del mazziere e proseguendo in senso orario, fino a fare tre interi giri del tavolo, ossia quando tutti i giocatori hanno esaurito tutte le carte.
+1. [L'attrezzatura: il mazzo](#1-lattrezzatura-il-mazzo)
+2. [Le squadre e il campo](#2-le-squadre-e-il-campo)
+3. [La partita: Mani, Turni e Fasi](#3-la-partita-mani-turni-e-fasi)
+4. [Le prese](#4-le-prese)
+5. [La Scopa](#5-la-scopa)
+6. [Il punteggio](#6-il-punteggio)
+7. [La Bazzica](#7-la-bazzica)
+8. [Il silenzio degli atleti e il "Che Palo!"](#8-il-silenzio-degli-atleti-e-il-che-palo)
+9. [Le varianti: la scala del campionato](#9-le-varianti-la-scala-del-campionato)
+10. [Casi da moviola](#10-casi-da-moviola)
+11. [Lo stadio digitale](#11-lo-stadio-digitale)
+12. [Capitolo finale: l'eLE, la classifica dei campioni](#12-capitolo-finale-lele-la-classifica-dei-campioni)
 
-## Prese
-Durante la fase delle Giocate i giocatori giocano una carta dalla propria mano mentre sul tavolo ci possono essere zero, una o più carte. Se sul tavolo esiste una combinazione di carte la cui somma è uguale al valore della carta giocata, la squadra del giocatore mette la carta giocata più tutte le carte appartenenti alla combinazione nel proprio mazzo delle Prese. Altrimenti la carta giocata viene lasciata sul tavolo in aggiunta a quelle già presenti.
-Le Prese sono soggette alle seguenti regole:
-- Se sul tavolo c'è una singola carta di valore pari alla carta giocata il giocatore deve prendere quella singola carta nella presa insieme a quella giocata.
-- Se esistono solo combinazioni di più carte, il giocatore può scegliere quale combinazione prendere.
-- L'asso piglia tutto, ossia sparecchia il tavolo, a meno che non ci sia già un asso posato sul tavolo, nel qual caso prende quel singolo asso.
-- Quando una giocata sparecchia il tavolo, cioè la Presa non lascia nessuna carta sul tavolo, si fa una Scopa. Anche l'asso che piglia tutto fa una Scopa, a patto che non ci siano altri Assi sul tavolo, nel qual caso l'asso giocato può solo prendere l'asso in tavola.
-- L'ultima giocata dell'ultimo Turno non può fare Scopa.
-- Se alla fine di una Mano sono rimaste carte sul tavolo queste vengono tutte aggiunte al mazzo delle Presa della squadra che ha effettuato l'ultima Presa.
+---
 
-## Punteggio
-Il punteggio finale per ciascuna squadra è dato dalla somma algebrica di 3 punteggi calcolati sul mazzo delle Prese di ciascuna squadra: punti di mazzo, scope e 2 di denari.
+## 1. L'attrezzatura: il mazzo
 
-### Punti di mazzo
-Si possono fare fino a 5 punti di mazzo.
-- Carte: chi ha più di 20 carte fa un punto di mazzo. Se entrambe le squadre hanno 20 carte le Carte sono pari ed il punto non viene assegnato.
-- Denari: chi ha più denari fa un punto di mazzo. Se entrambe le squadre hanno 5 denari i Denari sono pari ed il punto non viene assegnato.
-- Primiera: chi fa un maggior punteggio di Primiera fa un punto di mazzo (vedere il paragrafo Punteggio della Primiera per i dettagli del calcolo). Se le squadre hanno lo stesso punteggio la Primiera è pari ed il punto non viene assegnato.
-- 7 bello: chi prende il 7 di denari fa un punto.
-- Re bello: chi prende il re di denari fa un punto.
+Si gioca con un mazzo da Scopa o da Briscola: **40 carte**, 4 semi (**denari, coppe, spade, bastoni**), valori
+da 1 a 10 per ogni seme.
 
-#### Punteggio della Primiera
-Ai fini del calcolo del punteggio della Primiera si assegnano alle carte i seguenti valori:
-- i 7 valgono 21
-- i 6 valgono 18
-- gli assi valgono 16
-- i 5 valgono 15
-- i 4 valgono 14
-- i 3 valgono 13
-- i 2 valgono 12
-- le Figure valgono 10
-Il punteggio della Primiera è ottenuto sommando la carta dal valore più alto per ogni seme, a patto di aver preso almeno una carta per seme. Se una delle due squadre infatti non ha nemmeno una carta per uno dei semi la Primiera è vinta dall'altra squadra.
+| Valore | Nome | Note |
+|---|---|---|
+| 1 | Asso | il velocista che piglia tutto |
+| 2–7 | Due … Sette | |
+| 8 | Fante | Figura |
+| 9 | Cavallo | Figura |
+| 10 | Re | Figura |
+
+Tre carte hanno lo status di superstar:
+
+- **7 bello**: il 7 di denari. Vale un punto da solo e nelle Bazziche può trasformarsi in qualunque valore.
+- **Re bello**: il re di denari. Vale un punto da solo.
+- **2 di denari**: la carta maledetta. Chi la prende perde punti (vedi il [punteggio](#6-il-punteggio)).
+
+## 2. Le squadre e il campo
+
+Si gioca in **4 atleti divisi in 2 squadre da 2**, seduti alternati: ognuno ha il compagno di fronte e un
+avversario a destra e a sinistra. Nel gioco digitale i posti si chiamano Nord, Est, Sud e Ovest: **Nord e Sud**
+giocano contro **Est e Ovest**.
+
+Il primo **mazziere** si sorteggia. Si gioca in **senso orario**: comincia sempre chi sta alla sinistra del
+mazziere e il mazziere fa l'ultima giocata di ogni Turno. A ogni nuova Mano il ruolo di mazziere passa al
+giocatore alla sua sinistra.
+
+## 3. La partita: Mani, Turni e Fasi
+
+La struttura è quella di un torneo in miniatura:
+
+- una **partita** è fatta di una o più **Mani**;
+- ogni Mano è fatta di **3 Turni**;
+- ogni Turno ha le sue **Fasi**.
+
+**Inizio della Mano.** Il mazziere mescola e mette **4 carte scoperte sul tavolo**.
+
+**Ogni Turno:**
+
+1. **Distribuzione**: il mazziere dà **3 carte** a ogni giocatore.
+2. *(solo dalla variante Heisenberg in poi)* **Scambio**: ogni giocatore passa una carta al compagno (vedi
+   [Heisenberg](#werner-heisenberg)).
+3. **Giocate**: a turno, partendo dalla sinistra del mazziere, ognuno gioca una carta, finché tutti hanno finito
+   le carte (tre giri del tavolo).
+
+I conti tornano: 4 carte sul tavolo più 3 Turni × 4 giocatori × 3 carte fanno 40. Alla fine del terzo Turno il
+mazzo è finito e si contano i punti della Mano.
+
+**Fine della partita.** Vince la squadra che **alla fine di una Mano** ha **almeno 21 punti** ed è **in
+vantaggio** sull'altra. Se nessuna squadra è arrivata a 21, o se le squadre sono pari (anche oltre 21), si gioca
+un'altra Mano, ad oltranza, finché qualcuno non chiude i conti. Ai supplementari non si scappa.
+
+Nella [Margherita Hack](#margherita-hack) invece si giocano esattamente 4 Mani e il pareggio esiste.
+
+## 4. Le prese
+
+Quando tocca a lui, il giocatore cala una carta. Se può prendere, **deve** prendere: mette nel mazzo delle prese
+della propria squadra la carta giocata e le carte prese. Se non può prendere, la carta resta sul tavolo.
+
+Si prende così:
+
+- **Carta singola**: se sul tavolo c'è una carta dello **stesso valore** di quella giocata, si deve prendere quella
+  (se ce n'è più d'una, si sceglie quale). Le combinazioni in questo caso non sono ammesse.
+- **Combinazione**: se non c'è una carta singola dello stesso valore, si può prendere una combinazione di **due o
+  più carte** la cui somma è uguale al valore della carta giocata. Se le combinazioni possibili sono più d'una, si
+  sceglie quale.
+- **L'asso piglia tutto**: l'asso giocato sparecchia l'intero tavolo, **a meno che** sul tavolo ci sia già almeno
+  un asso: in quel caso prende soltanto un asso (a scelta, se ce ne sono più d'uno). Su un tavolo vuoto l'asso
+  resta semplicemente in tavola.
+
+Tutte le carte prese da una squadra finiscono nel suo **mazzo delle prese**, che a fine Mano decide il punteggio.
+
+**Carte residue.** Se alla fine della Mano restano carte sul tavolo, vanno alla squadra che ha fatto **l'ultima
+presa**. (Caso rarissimo: se in tutta la Mano nessuno ha preso niente, vanno alla squadra del mazziere.)
+
+## 5. La Scopa
+
+La giocata più amata dal pubblico. Si fa **Scopa** quando una presa **sparecchia il tavolo**, cioè non lascia
+nessuna carta. La carta con cui si è fatta Scopa si mette **a faccia in su** nel mazzo delle prese: ogni carta a
+faccia in su vale **1 punto** a fine Mano.
+
+- Anche l'asso che piglia tutto fa Scopa (ma se sul tavolo c'erano altri assi prende solo un asso, e fa Scopa
+  soltanto se quello era l'unica carta rimasta).
+- **L'ultima giocata dell'ultimo Turno non fa mai Scopa**: sparecchiare all'ultimo secondo è troppo facile,
+  il pubblico non applaude.
+
+## 6. Il punteggio
+
+A fine Mano ogni squadra conta il proprio mazzo delle prese. Il punteggio è la somma di **punti di mazzo**,
+**Scope** e **2 di denari** (più la Napola e il Napoleone nelle varianti che li prevedono).
+
+### Punti di mazzo (fino a 5)
+
+| Punto | Lo prende chi… | Se pari |
+|---|---|---|
+| **Carte** | ha più di 20 carte | 20 a 20: nessuno |
+| **Denari** | ha più di 5 denari | 5 a 5: nessuno |
+| **Primiera** | ha il punteggio di primiera più alto | nessuno |
+| **7 bello** | ha preso il 7 di denari | — |
+| **Re bello** | ha preso il re di denari | — |
+
+#### La Primiera
+
+Per ogni seme si prende la carta di valore di primiera più alto e si sommano i quattro valori:
+
+| Carta | 7 | 6 | Asso | 5 | 4 | 3 | 2 | Figure |
+|---|---|---|---|---|---|---|---|---|
+| Valore di primiera | 21 | 18 | 16 | 15 | 14 | 13 | 12 | 10 |
+
+Per avere la primiera serve almeno una carta di **ogni** seme. Se a una squadra manca un seme, la primiera va
+all'altra; se manca un seme a **entrambe**, il punto non lo prende nessuno.
 
 ### Scope
-Quando con una Presa si sparecchia il tavolo, cioè la carta giocata più tutte quelle del tavolo finiscono nel mazzo delle prese della squadra che ha appena giocato, tale squadra fa una Scopa.
-Ogni Scopa viene segnata mettendo la carta con la quale si è sparecchiato rivolta a faccia in su nel mazzo delle prese.
-Al termine della Mano quindi oltre ai punti di mazzo si contano le carte a faccia in su e si aggiunge un punto per ciascuna di esse.
 
-### 2 di denari
-La squadra che prende il 2 di denari nel proprio mazzo delle Prese sottrae 5 punti al proprio punteggio finale.
+Ogni carta a faccia in su nel mazzo delle prese vale **1 punto**: Scope vere e proprie, Scope di Bazzica e, nelle
+varianti, Piccole, Grandi e assi di Avogadro.
 
-## Bazziche
-In ciascun Turno, prima di giocare la propria prima carta, ciascun giocatore può chiamare una Bazzica se possiede le carte adeguate.
-Chiamando la Bazzica il giocatore mostra le proprie carte e gioca a carte scoperte per il resto del Turno e segna un quantitativo di scope dipendente dalla Bazzica chiamata.
-Se la squadra del giocatore che ha chiamato la Bazzica non ha preso abbastanza carte per segnare tutte le scope dovute alla Bazzica si annota il credito di Scope e queste vengono segnate man mano che la squadra prende carte. Se a termine Mano la squadra non ha riscosso tutto il credito di Scope dovute alle bazziche tali punti vengono persi.
+### Il 2 di denari
 
-### Tipologie di Bazzica
-- 3 carte diverse con somma minore o uguale a 9: 2 Scope
-- 2 carte uguali con somma totale delle 3 carte minore o uguale a 9: 3 Scope
-- 3 carte uguali con qualunque somma: 7 Scope
-Al fine di fare una Bazzica si può assegnare al 7 bello qualunque valore compreso tra 1 e 10 a patto che il risultato finale sia una bazzica valida.
-Quando il 7 bello viene giocato prende in base al valore che gli viene assegnato, ad esempio con 7 di denari, 1 di spade e 3 di bastoni si può dichiarare che il 7 bello vale 5, segnare 2 scope e giocare il 7 per raccogliere un 5 o una coppia 2 + 3. Se invece quando il 7 bello viene giocato non prende nulla, dopo essere stato posato sul tavolo ricomincia a valere 7 per le prese successive.
+La squadra che prende il 2 di denari **perde 5 punti**. Sì, si può chiudere una Mano in negativo: è lo sport.
+(Dalla variante Fermi la penalità si alleggerisce.)
 
-## Regole aggiuntive
-- Nella Bazzica è fatto assoluto divieto di comunicare verbalmente, e anche le esclamazioni o gesti che possono far intuire qualunque cosa al compagno di squadra.
-- L'unica forma di comunicazione concessa è esclamare "Che Palo!" se si hanno quasi le carte per fare una Bazzica, ad esempio due 5 ed un 6.
+## 7. La Bazzica
 
-## Varianti
+Ed eccoci al pezzo forte. La **Bazzica** è il colpo che distingue un dilettante da un campione: basta avere le
+carte giuste in mano per segnare Scope prima ancora di giocare.
+
+### Quando si chiama
+
+In ogni Turno, **quando tocca a lui e prima di giocare la sua prima carta**, un giocatore può chiamare una
+Bazzica se le sue 3 carte lo permettono. Chiamandola, **mostra le carte a tutti** e gioca a carte scoperte per
+il resto del Turno. Gli avversari sanno tutto: ma ormai le Scope sono segnate.
+
+### Le Bazziche
+
+| Bazzica | Carte | Scope |
+|---|---|---|
+| **Tre carte diverse** | 3 valori tutti diversi con somma ≤ 9 (es. 1-3-5) | **2** |
+| **Coppia** | 2 carte uguali, somma delle 3 carte ≤ 9 (es. 2-2-4) | **3** |
+| **Tris** | 3 carte uguali, qualunque somma (es. re-re-re) | **7** |
+
+### Il 7 bello jolly
+
+Per fare Bazzica si può dare al **7 bello** qualunque valore **da 1 a 10**, purché il risultato sia una Bazzica
+valida. Se ci sono più Bazziche possibili, si sceglie quale chiamare.
+
+Il valore scelto vale anche per le prese, finché il 7 bello resta in mano. Esempio: con 7 bello, asso di spade e
+3 di bastoni si dichiara che il 7 bello vale 5 (1 + 3 + 5 = 9, tre carte diverse) e si segnano 2 Scope; poi,
+giocandolo, il 7 bello prende come un 5: un 5 singolo, oppure la coppia 2 + 3.
+
+- Se il 7 bello viene giocato e non prende nulla, una volta posato sul tavolo torna a valere 7.
+- Se gli si dà valore **1**, vale soltanto 1: **non piglia tutto** come un asso vero.
+
+### Segnare le Scope: subito e a credito
+
+Le Scope della Bazzica si segnano **subito**, girando a faccia in su altrettante carte coperte già presenti nel
+mazzo delle prese della squadra.
+
+Se le carte coperte non bastano, la differenza diventa un **credito di Scope** della squadra, che si riscuote man
+mano:
+
+- a ogni presa della squadra (fatta da uno qualsiasi dei due compagni), le carte della presa che restano coperte,
+  **compresa la carta giocata**, si girano a faccia in su fino a saldare il credito;
+- anche le carte residue che la squadra raccoglie a fine Mano pagano il credito;
+- il credito non riscosso **alla fine della Mano è perso**. Il credito è come la gloria: va incassato subito.
+
+## 8. Il silenzio degli atleti e il "Che Palo!"
+
+La Bazzica è uno sport di concentrazione. **È assolutamente vietato comunicare**: niente parole, niente
+esclamazioni, niente gesti, niente sopracciglia alzate che possano far capire qualcosa al compagno.
+
+L'unica eccezione è il grido di battaglia **"Che Palo!"**: si esclama quando si è **a un passo da una Bazzica**
+(per esempio con due 5 e un 6: sarebbe bastato un altro 5). Si può gridare quando si vuole; nel gioco digitale i
+bot lo fanno solo quando sono davvero a una carta da una Bazzica. Durante lo Scambio carte, invece, silenzio
+assoluto.
+
+## 9. Le varianti: la scala del campionato
+
+Le varianti sono **cumulative**: ognuna aggiunge le sue regole a quelle della precedente, come le categorie di un
+campionato. Chi arriva in Avogadro gioca con tutto.
+
+| Variante | Aggiunge |
+|---|---|
+| **Vanilla** | le regole base qui sopra |
+| **Heisenberg** | Scambio carte col compagno a ogni Turno, "Passa veloce" |
+| **Einstein** | il tris con il 7 bello vale 5 Scope |
+| **Fermi** | 2 di denari alleggerito, Napoleone |
+| **Pascal** | gli assi di chi ha chiamato Bazzica valgono 1 |
+| **Curie** | Piccola e Grande |
+| **Federico II** | Napola |
+| **Avogadro** | ogni asso preso è una Scopa |
+| **Margherita Hack** | (si abbina a qualsiasi variante) 4 Mani esatte |
 
 ### Werner Heisenberg
-Come la Vanilla, ma con le seguenti modifiche:
-- all'inizio di ogni Turno subito dopo la fase di Distribuzione delle carte e prima della fase delle Giocate, si aggiunge una fase di Scambio carte. Durante la fase di Scambio carte ogni giocatore sceglie una carta da passare al proprio compagno di squadra.
-- le Bazziche si chiamano con le carte che si posseggono a valle della fase di Scambio carte.
-- si aggiunge un nuovo genere di comunicazione concessa, che consiste passare la carta al proprio compagno "velocemente". Solitamente si fa per lasciar intendere di avere la possibilità di fare una Bazzica di punteggio elevato e quindi di desiderare se possibile il 7 bello, o magari una carta dal valore basso. Qualsiasi altro genere di comunicazione durante lo Scambio carte invalida eventuali Bazziche fatte dalla squadra. In tali situazioni le Bazziche non possono proprio venire chiamate, impedendo quindi di dare al 7 bello un valore utile a fare una presa immediata.
+
+- Dopo la distribuzione e prima delle giocate c'è lo **Scambio carte**: ogni giocatore sceglie una delle sue carte
+  e la passa al compagno.
+- Lo scambio è **segreto**: la carta del compagno si vede solo quando **entrambi** hanno passato la propria.
+- Le Bazziche si chiamano con le carte che si hanno **dopo** lo scambio.
+- Unica comunicazione concessa: il **"Passa veloce"**, cioè passare la carta con decisione per far capire al
+  compagno che si ha in mano una Bazzica importante e che servirebbe il 7 bello, o una carta bassa. Qualsiasi altra
+  comunicazione durante lo scambio invalida le Bazziche della squadra in quel Turno. (Nel gioco digitale il
+  problema non si pone: durante lo scambio la chat è chiusa.)
 
 ### Albert Einstein
-Come la Heisenberg, ma con le seguenti modifiche:
-- se si fa una Bazzica con il 7 bello + 2 carte uguali dando al 7 bello lo stesso valore delle altre 2 carte, la Bazzica vale 5 Scope invece di 7.
+
+- Un **tris che contiene il 7 bello** (con il 7 bello che vale come le altre due carte) vale **5 Scope** invece
+  di 7. Il jolly non può avere tutto.
 
 ### Enrico Fermi
-Come la Einstein, ma con le seguenti modifiche:
-- il 2 di denari vale -5 punti + 1 per punto di mazzo fatto. Ad esempio se, la squadra che prende il 2 di denari fa 3 punti di mazzo, il 2 di denari vale -2 (= -5 + 3).
-- se una squadra prende tutti i denari fa Napoleone. Il Napoleone vale 10 punti. In caso di Napoleone il 2 di denari segue la regola precedente, ma già aver preso tutti i denari garantisce 3 punti di mazzo, quindi il 2 di denari è già fortemente disinnescato.
+
+- Il **2 di denari** vale **−5 più 1 punto per ogni punto di mazzo** fatto dalla squadra che lo prende. Esempio:
+  con 3 punti di mazzo il 2 di denari vale −2.
+- **Napoleone**: la squadra che prende **tutti i 10 denari** fa Napoleone, che vale **10 punti**. In più, avendo
+  tutti i denari, ha già in tasca 3 punti di mazzo (denari, 7 bello, re bello): il 2 di denari è praticamente
+  disinnescato. Un'impresa da tramandare ai nipoti.
 
 ### Blaise Pascal
-Come la Fermi, ma con le seguenti modifiche:
-- gli assi usati nelle Bazziche non pigliano tutto, ma valgono semplicemente 1.
+
+- Gli **assi** di chi ha chiamato Bazzica in quel Turno **non pigliano tutto**: valgono semplicemente 1 (prendono
+  solo un asso singolo sul tavolo).
 
 ### Marie Curie
-Come la Pascal, ma con le seguenti modifiche:
-- se un giocatore cala una carta ed il giocatore seguente la prende subito dopo all'interno dello stesso turno con una carta di uguale valore, si fa una "Piccola". La Piccola vale una Scopa.
-  - Se facendo Piccola si sparecchia il tavolo si segna una sola Scopa per la Piccola, e non si sesgna la Scopa dovuta all'aver sparecchiato.
-  - Il primo giocatore di un turno non può fare Piccola, anche se prende l'ultima carta giocata dal giocatore precedente nel turno precedente.
-  - Si fa Piccola anche se la carta è presa con il 7 bello usato all'interno di una Bazzica e gli si assegna il valore della carta appena giocata dal giocatore precedente.
-  - L'ultima giocata dell'ultimo Turno non può fare Piccola.
-- se un giocatore fa una Presa in cui tutte le carte coinvolte (carta giocata e carte prese dal tavolo) hanno lo stesso seme, si fa una "Grande". Tutte le carte coinvolte in una Grande vengono segnate come Scope.
-  - Se facendo Grande si sparecchia il tavolo si segnano solo le Scope della grande, e non si segna la Scopa dovuta all'aver sparecchiato.
-  - Si fa Grande anche se si raccolgono tutti denari con il 7 bello usato all'interno di una Bazzica e gli si assegna il valore della carta o delle carte di denari prese.
-  - Si fa Grande anche se tutte le carte sul tavolo sono dello stesso seme e si usa un asso dello stesso seme per sparecchiare. Tale asso non deve essere stato usato in una Bazzica, altrimenti vale 1.
-  - L'ultima giocata dell'ultimo Turno non può fare Grande.
- 
+
+**La Piccola.** Se un giocatore cala una carta (senza prendere) e il giocatore **subito dopo**, nello stesso
+Turno, la prende **da sola** con una carta di **ugual valore**, fa **Piccola**, che vale **una Scopa**.
+
+- Se la Piccola sparecchia il tavolo, si segna solo la Piccola: una Scopa, non due.
+- Il primo giocatore di un Turno non può fare Piccola, nemmeno sull'ultima carta del Turno precedente.
+- Vale anche con il 7 bello di una Bazzica a cui si dà il valore della carta appena calata.
+- L'ultima giocata dell'ultimo Turno non fa Piccola.
+
+**La Grande.** Se in una presa **tutte** le carte coinvolte (quella giocata e quelle prese) sono **dello stesso
+seme**, si fa **Grande**: **tutte** quelle carte si segnano come Scope.
+
+- Se la Grande sparecchia il tavolo, si segnano solo le Scope della Grande, senza la Scopa in più.
+- Vale anche con il 7 bello di una Bazzica, se prende solo denari.
+- Vale anche con un asso che sparecchia un tavolo tutto del suo seme, purché l'asso non sia di chi ha chiamato
+  Bazzica in quel Turno (in quel caso vale 1).
+- Se la stessa presa è anche una Piccola, vale la Grande. Succede solo con il 7 bello di una Bazzica che prende il
+  denaro appena calato: per esempio il 7 bello che vale 5 prende il 5 di denari, sono due denari, Grande da 2 Scope.
+- L'ultima giocata dell'ultimo Turno non fa Grande.
+
 ### Federico II
-Come la Curie, ma con le seguenti modifiche:
-- se una squadra prende almeno Asso, 2 e 3 di denari fa la Napola. Ogni altra carta di denari presa consecutiva ad Asso, 2 e 3 si aggiunge alla Napola, ad esempio se una squadra prende tutti i denari da Asso a 5 mentre l'altra squadra ha preso almeno il 6, la prima squadra ha fatto "Napola al 5". La Napola vale 1 punto per ogni carta di denari presa consecutiva all'Asso, quindi una Napola al 5 vale 5 punti. Il Napoleone diventa quindi un caso particolare di Napola, ossia una Napola al 10 e coerentemente con la sua definizione data nella variante Fermi, vale 10 punti.
+
+- **Napola**: la squadra che prende **asso, 2 e 3 di denari** fa Napola. Ogni altro denaro preso **consecutivo**
+  (4, 5, 6…) la allunga. Esempio: chi ha preso tutti i denari dall'asso al 5, mentre il 6 l'ha preso l'altra
+  squadra, fa "Napola al 5".
+- La Napola vale **1 punto per ogni carta** della scala: la Napola al 5 vale 5 punti.
+- Il **Napoleone** diventa la Napola al 10 e vale, come in Fermi, 10 punti.
 
 ### Amedeo Avogadro
-Come la Federico II, ma con le seguenti modifiche:
-- ogni Asso preso viene segnato come Scopa.
-- se un asso fa già Scopa, ad esempio usando la sua proprietà di "pigliare tutto" o come parte di una Grande è già una Scopa e non si segna una Scopa aggiuntiva.
-- gli assi presi nell'ultima giocata dell'ultimo Turno non fanno Scopa.
+
+- **Ogni asso preso** si segna come **Scopa**, compreso l'asso giocato quando fa una presa.
+- Un asso che è già una Scopa (perché sparecchia, o perché fa parte di una Grande) non fa una Scopa in più.
+- Gli assi presi nell'ultima giocata dell'ultimo Turno non fanno Scopa, e nemmeno quelli raccolti con le carte
+  residue.
 
 ### Margherita Hack
-Applicabile a qualsiasi variante, ma con le seguenti modifiche:
-- non si gioca fino a 21 punti, ma si fanno 4 Mani, in modo che ogni giocatore faccia da mazziere una volta, e vince la squadra con il maggior punteggio alla fine.
-- se al termine delle 4 partite il punteggio è pari la partita finisce in parità
 
-# eLE, la classifica della Bazzica
+Si abbina a **qualsiasi** variante:
 
-L'eLE è il nostro Elo: un punteggio personale che sale quando si vince e scende quando si perde, tanto più
-quanto il risultato è inatteso. Si gioca con un **account** (nome utente e password); chi gioca come ospite
-può farlo come sempre, ma senza eLE.
+- non si gioca fino a 21: si giocano **esattamente 4 Mani**, così ogni giocatore fa il mazziere una volta;
+- vince la squadra con più punti alla fine della quarta Mano;
+- se alla fine i punti sono pari, la partita finisce **in parità**.
 
-## Quali partite contano
-- Contano solo le partite in cui all'avvio i 4 posti sono occupati da **4 account diversi**: niente bot, niente
-  ospiti, niente più posti dallo stesso giocatore (hot-seat). La stanza del tavolo mostra "Partita valutata eLE"
-  oppure il motivo per cui non lo è.
-- Le partite interrotte (terminate a mano o rimaste senza giocatori) non contano.
-- Tutte le varianti, con o senza Margherita Hack, contano allo stesso modo: c'è un solo eLE.
+## 10. Casi da moviola
 
-## Il calcolo
-- Si parte da **1550**. K vale **40** nelle prime **15** partite valutate (eLE provvisorio, mostrato con un
-  "?", ad esempio 1532?) e poi **30**.
-- eLE di squadra = media dei due compagni. Risultato atteso della squadra:
-  `E = 1 / (1 + 10^((R_avversari - R_squadra) / 400))`.
-- Risultato S: 1 vittoria, 0 sconfitta, 0,5 pareggio. Variazione di squadra: `D = K · (S - E)`, dove ciascun
-  giocatore usa il proprio K.
-- **Ripartizione tra i compagni.** Contano i punti individuali: Scope, Piccole, Grandi (una Scopa per carta),
-  assi Avogadro e Scope di Bazzica fatte da quel giocatore. Carte, denari, primiera, 7 e re bello, 2 di denari,
-  Napola e carte residue sono di squadra e non contano.
-  - Una Bazzica conta per chi l'ha chiamata, ma solo per le Scope **riscosse**: quelle girate subito e quelle
-    del credito pagato dopo, anche con una presa del compagno. Il credito si paga nell'ordine in cui le Bazziche
-    sono state chiamate; il credito perso a fine Mano non conta. Le carte girate per pagare il credito non
-    contano per chi fa la presa.
-  - **Carta passata dal compagno.** Se una Scopa, una Piccola, una Grande o gli assi Avogadro si prendono
-    giocando la carta ricevuta dal compagno nello scambio di quel Turno, i punti vanno **metà a chi gioca e
-    metà al compagno**. Lo stesso per una Bazzica, se la carta ricevuta è stata decisiva (con le carte che si
-    avevano prima dello scambio non c'era una Bazzica di quel valore): le sue Scope riscosse e il bonus della
-    Bazzica da 7 si dividono a metà.
-  - `q = (p_giocatore + 3) / (p_giocatore + p_compagno + 6)`.
-  - Vittoria: `variazione = D · (1 + 0,5 · (2q - 1))`; sconfitta: `variazione = D · (1 - 0,5 · (2q - 1))`.
-    Chi ha fatto più punti guadagna di più quando si vince e perde di meno quando si perde.
-  - Pareggio: come la vittoria se D ≥ 0, come la sconfitta se D < 0.
+Le domande che fanno discutere al bar dopo la partita, con il verdetto dell'arbitro.
 
-> ## ⭐ La regola dello spettacolo
-> **La Bazzica è lo sport aziendale più spettacolare di tutti.** Il pubblico vuole partite tirate: una
-> vittoria troppo larga non soddisfa le aspettative e quindi vale meno.
->
-> Con i punteggi finali A e B: `r = |A - B| / (|A| + |B|)`.
-> Il **guadagno dei vincitori** si moltiplica per:
-> - **1** se r ≤ 0,2 (per esempio 30 a 20);
-> - un valore che scende in linea retta da 1 a **0,25** tra r = 0,2 e r = 0,6;
-> - **0,25** se r ≥ 0,6 (per esempio 40 a 10).
->
-> I perdenti perdono comunque la loro quota intera. Stravincere non conviene: *poco spettacolo, il pubblico
-> non gradisce!*
+- **Posso non prendere se una presa è possibile?** No. Se la carta che giochi può prendere, prende.
+- **Sul tavolo ci sono un 5 singolo e un 2 + 3: cosa prende il mio 5?** Il 5 singolo. Le combinazioni valgono solo
+  se non c'è una carta singola dello stesso valore.
+- **Asso giocato con un asso sul tavolo?** Prende solo l'asso; il resto del tavolo resta lì.
+- **Asso giocato su tavolo vuoto?** Resta sul tavolo e non prende nulla.
+- **Quando posso chiamare la Bazzica?** Quando tocca a te, prima della tua prima carta di quel Turno. Dopo è troppo
+  tardi: il treno è passato.
+- **Il credito di Bazzica lo paga anche il compagno?** Sì: il credito è della squadra, lo paga qualsiasi presa dei
+  due compagni.
+- **La Bazzica da 7 Scope a fine Mano ne ha riscosse solo 5.** Le altre 2 sono perse.
+- **Il 7 bello a cui ho dato valore 1 piglia tutto come un asso?** No: vale 1 e basta.
+- **Ultima giocata della Mano che sparecchia?** Niente Scopa (né Piccola, né Grande, né assi di Avogadro). Le carte
+  però si prendono, e con loro si paga l'eventuale credito di Bazzica.
 
-- **Bonus spettacolo** (individuali, sommati alla fine): **+3** per ogni Napoleone (a ciascuno dei due compagni)
-  e **+1** per ogni Bazzica da 7 Scope riscossa per intero. I bonus si moltiplicano per `2 · (1 - E)` della
-  propria squadra, limitato tra 0,5 e 1,5: valgono di più per gli sfavoriti.
-- **Abbandono.** Chi è stato sostituito da un bot (uscita o inattività) e non ha ripreso il posto prima della
-  fine prende la sconfitta piena, `K · (0 - E)`, comunque finisca la partita, senza ripartizione, spettacolo
-  né bonus. I punti fatti dal bot al suo posto contano per quel posto nella ripartizione del compagno. Gli altri
-  tre giocatori vengono valutati normalmente ma con K dimezzato (una sola volta, anche se escono in due). Chi
-  riprende il posto prima della fine è come se non fosse mai uscito.
+## 11. Lo stadio digitale
+
+Questo progetto porta la Bazzica in rete: lobby, tavoli, bot che sostituiscono gli atleti assenti, spettatori in
+tribuna, timer, statistiche e classifica. Le regole sono quelle di questo documento; il gioco le fa rispettare da
+solo, quindi niente discussioni con l'arbitro.
+
+Qualche regola di fair play del campionato online:
+
+- **Spettatori**: si può guardare una partita dalla tribuna (se la stanza lo permette) e lanciare cori con le frasi
+  rapide. Lo spettatore vede le carte giocate, le prese, le Bazziche dichiarate e i punteggi, ma **mai le carte in
+  mano**: niente suggerimenti dalla curva.
+- **Inattività e abbandoni**: chi resta fermo per 5 minuti quando tocca a lui, o resta disconnesso per 5 minuti
+  mentre gli altri lo aspettano, viene sostituito da un bot. Lo stesso succede con "Esci dalla partita". Chi è
+  stato sostituito può **riprendere il posto** finché la partita è in corso.
+- **Account**: si gioca con il proprio account (per entrare nella classifica eLE) oppure come ospite.
+
+Tutti i dettagli su come si gioca, i pulsanti e le opzioni sono in [`ISTRUZIONI.md`](ISTRUZIONI.md).
+
+---
+
+## 12. Capitolo finale: l'eLE, la classifica dei campioni
+
+Ogni sport serio ha il suo ranking. Il tennis ha l'ATP, gli scacchi hanno l'Elo. La Bazzica ha l'**eLE**: un
+punteggio personale che sale quando si vince e scende quando si perde, tanto più quanto il risultato è
+sorprendente. Battere i campioni in carica vale oro; perdere contro gli ultimi in classifica brucia parecchio.
+
+L'eLE riguarda **solo la classifica**: il punteggio della partita non cambia di una virgola.
+
+### 12.1 Chi entra in classifica
+
+- Per avere l'eLE serve un **account** (nome utente e password). Chi gioca come ospite partecipa lo stesso, ma la
+  partita non conta.
+- Una partita è **valutata** solo se all'avvio i 4 posti sono occupati da **4 account diversi**: niente bot, niente
+  ospiti, niente due posti dallo stesso giocatore. La stanza del tavolo dice subito se la partita è valutata
+  oppure perché non lo è.
+- Le partite **interrotte** (terminate a mano o rimaste senza giocatori) non contano.
+- C'è **un solo eLE** per tutte le varianti, con o senza Margherita Hack.
+
+### 12.2 Le basi
+
+- Ogni atleta parte da **1550**.
+- Il **fattore K** (quanto si muove l'eLE in una partita) vale **40** nelle prime **15** partite valutate e poi
+  **30**. Nelle prime 15 l'eLE è **provvisorio** e si mostra con un punto interrogativo, per esempio **1532?**:
+  il talento va ancora misurato.
 - L'eLE si conserva con i decimali e si mostra arrotondato all'intero.
 
-Esempio: quattro giocatori a 1550 non provvisori, finisce 30 a 20. E = 0,5, quindi D = 30 · 0,5 = **+15**
-per i vincitori e −15 per i perdenti; con r = 0,2 lo spettacolo è pieno. Se tra i vincitori uno ha fatto 12
-punti individuali e l'altro 6, q = 15/24 = 0,625: il primo prende +16,9 e il secondo +13,1.
+### 12.3 Il risultato della squadra
 
-Tutti i parametri sono in `bazzica/server/ele.py`. Se si cambiano, `python -m bazzica.admin ricalcola` rifà
-la classifica da zero, partita per partita, con i dati salvati.
+- **eLE di squadra** = media dei due compagni.
+- **Risultato atteso** della squadra:
+  `E = 1 / (1 + 10^((R_avversari − R_squadra) / 400))`.
+  Due squadre alla pari hanno E = 0,5; la favorita ha E più alto.
+- **Risultato** S: **1** vittoria, **0** sconfitta, **0,5** pareggio.
+- **Variazione di squadra** `D = K · (S − E)`, dove ciascun giocatore usa il proprio K.
+
+Esempio: quattro giocatori a 1550 non provvisori, finisce 30 a 20. E = 0,5, quindi D = 30 · 0,5 = **+15** per i
+vincitori e **−15** per i perdenti.
+
+### 12.4 La ripartizione tra i compagni
+
+Non tutti i gol pesano uguale. La variazione di squadra si divide tra i compagni in base ai **punti
+individuali**, cioè le giocate di cui ognuno è stato protagonista:
+
+- **Scope**, **Piccole**, **Grandi** (una Scopa per ogni carta della Grande), **assi di Avogadro**;
+- le **Scope di Bazzica**, a chi ha chiamato la Bazzica, ma **solo quelle riscosse**: quelle girate subito e quelle
+  del credito pagato dopo, anche se a pagarlo è una presa del compagno o sono le carte residue. Il credito si paga
+  nell'ordine in cui le Bazziche sono state chiamate; il credito perso a fine Mano non conta. Le carte girate per
+  pagare il credito non contano per chi ha fatto la presa.
+
+Carte, denari, primiera, 7 e re bello, 2 di denari, Napola e carte residue sono **di squadra** e non contano.
+
+**L'assist del compagno.** Se una Scopa, una Piccola, una Grande o gli assi di Avogadro si prendono giocando la
+**carta ricevuta dal compagno nello scambio** di quel Turno, i punti vanno **metà a chi gioca e metà al
+compagno**: l'assist vale quanto il gol. Lo stesso vale per una Bazzica, se la carta ricevuta è stata
+**decisiva**, cioè se con le carte che si avevano prima dello scambio non c'era una Bazzica di quel valore: le sue
+Scope riscosse (e il bonus della Bazzica da 7) si dividono a metà.
+
+Con `p` i punti individuali:
+
+- `q = (p_giocatore + 3) / (p_giocatore + p_compagno + 6)`;
+- **vittoria**: `variazione = D · (1 + 0,5 · (2q − 1))`;
+- **sconfitta**: `variazione = D · (1 − 0,5 · (2q − 1))`;
+- **pareggio**: come la vittoria se D ≥ 0, come la sconfitta se D < 0.
+
+Chi ha fatto più punti guadagna di più quando si vince e perde di meno quando si perde. Il "+3" serve a non
+esagerare: anche il compagno che non ha toccato palla ha difeso.
+
+Esempio: vittoria 30 a 20 con D = +15; uno dei vincitori ha fatto 12 punti individuali, l'altro 6.
+q = 15/24 = 0,625: il primo prende **+16,9**, il secondo **+13,1**.
+
+### 12.5 ⭐ La regola dello spettacolo
+
+> **La Bazzica è lo sport aziendale più spettacolare di tutti.** Il pubblico paga il biglietto per vedere partite
+> tirate, rimonte, Bazziche all'ultimo Turno. Una vittoria troppo larga non soddisfa le aspettative del pubblico,
+> e quindi vale meno.
+>
+> Con i punteggi finali A e B si calcola lo scarto relativo: `r = |A − B| / (|A| + |B|)`.
+> Il **guadagno dei vincitori** si moltiplica per:
+>
+> - **1** se r ≤ 0,2 (per esempio 30 a 20: partita vera);
+> - un valore che scende in linea retta da 1 a **0,25** tra r = 0,2 e r = 0,6 (per esempio 35 a 15: × 0,625);
+> - **0,25** se r ≥ 0,6 (per esempio 40 a 10: una passeggiata, il pubblico sbadiglia).
+>
+> I perdenti perdono comunque la loro quota intera. Stravincere non conviene: *poco spettacolo, il pubblico non
+> gradisce!*
+
+### 12.6 I bonus spettacolo
+
+Le imprese leggendarie meritano un premio, sommato alla fine:
+
+- **+3** per ogni **Napoleone**, a ciascuno dei due compagni;
+- **+1** per ogni **Bazzica da 7 Scope riscossa per intero** (+0,5 a testa se la carta del compagno è stata
+  decisiva).
+
+I bonus si moltiplicano per `2 · (1 − E)` della propria squadra, limitato tra 0,5 e 1,5: valgono di più per gli
+sfavoriti. Il Napoleone di Davide contro Golia vale più di quello di Golia.
+
+### 12.7 Abbandoni
+
+Chi lascia il campo non fa una bella figura. Se un giocatore viene sostituito da un bot (uscita o inattività) e
+**non riprende il posto prima della fine**:
+
+- prende la **sconfitta piena**, `K · (0 − E)`, comunque finisca la partita, senza ripartizione, spettacolo né
+  bonus;
+- i punti fatti dal bot al suo posto contano per quel posto nella ripartizione del compagno;
+- gli altri tre giocatori vengono valutati normalmente, ma con **K dimezzato** (una volta sola, anche se escono in
+  due).
+
+Chi riprende il posto prima della fine è come se non fosse mai uscito.
+
+### 12.8 Fine partita e classifica
+
+A fine partita ognuno vede la propria variazione con il dettaglio del calcolo, per esempio
+"+16,9: +15,0 squadra, ripartizione ×1,13, spettacolo ×1". La pagina **Classifica** mostra l'eLE di tutti gli
+atleti e il grafico dell'andamento, partita dopo partita.
+
+Tutti i parametri sono in `bazzica/server/ele.py`. Se la Federazione decide di cambiarli,
+`python -m bazzica.admin ricalcola` rifà la classifica da zero, partita per partita, con i dati salvati.
+
+---
+
+*Fine del regolamento. Ora mescolate, sedetevi e che vinca il più spettacolare.* 🃏

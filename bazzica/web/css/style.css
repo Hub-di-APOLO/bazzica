@@ -798,3 +798,81 @@ body[data-schermo="gioco"] .sfondo-scienziati img { opacity: .8; width: clamp(64
 .fumetto.commento::after { left: 18px; }
 @keyframes fumetto-commento { 0% { transform: translate(0, -100%) scale(0); } 10% { transform: translate(0, -100%) scale(1.08); }
   16%, 85% { transform: translate(0, -100%) scale(1); opacity: 1; } 100% { transform: translate(0, -100%) scale(1); opacity: 0; } }
+
+/* ===================== Account ed eLE ===================== */
+.schede-accesso { display: flex; gap: 8px; margin: 0 0 12px; }
+.schede-accesso .scheda { flex: 1; font: inherit; font-weight: 700; padding: 10px; border-radius: 14px; cursor: pointer;
+  border: 3px solid var(--outline); background: rgba(255,255,255,.55); color: var(--outline); }
+.schede-accesso .scheda.attiva { background: linear-gradient(#ffe36b, #ffb800); box-shadow: 0 3px 0 var(--outline); }
+.separatore { display: flex; align-items: center; gap: 10px; margin: 18px 0 12px; color: #fff3c4; font-weight: 700; }
+.separatore::before, .separatore::after { content: ""; flex: 1; height: 3px; background: rgba(255,255,255,.35); border-radius: 3px; }
+#scr-accesso .nota { color: #fff3c4; }
+#scr-accesso form .nota { color: var(--muted); }
+#btn-ospite { width: 100%; }
+
+.chip-ele { display: inline-block; margin-left: 6px; padding: 0 7px; border-radius: 99px; font-size: 12px; font-weight: 800;
+  background: #fff3c4; color: var(--outline); border: 2px solid var(--outline); vertical-align: middle; white-space: nowrap; }
+.g-badge.ele { background: #fff3c4; }
+.tag-ele { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 6px; font-size: 11px; font-weight: 800;
+  background: var(--gold); color: var(--outline); }
+.vs-squadra { display: flex; flex-direction: column; align-items: center; }
+.vs-ele { font-size: 12px; font-weight: 700; color: #fff; opacity: .9; }
+.valutata { margin: 10px 4px 0; font-weight: 700; text-align: center; padding: 6px 10px; border-radius: 12px; border: 3px solid var(--outline); }
+.valutata.si { background: linear-gradient(#ffe36b, #ffb800); color: var(--outline); }
+.valutata.no { background: rgba(255,255,255,.8); color: var(--muted); font-weight: 600; }
+
+/* fine partita */
+.esito-ele { text-align: left; margin: 10px 0 4px; background: #fff8e1; border: 3px solid var(--outline); border-radius: 14px; padding: 8px 10px; }
+.esito-ele h4 { margin: 0 0 6px; }
+.riga-ele { display: grid; grid-template-columns: 1fr auto auto; column-gap: 10px; align-items: baseline; padding: 4px 0;
+  border-bottom: 1px dashed var(--line); }
+.riga-ele:last-child { border-bottom: 0; }
+.riga-ele.mia .ele-nome { text-decoration: underline; text-decoration-thickness: 2px; }
+.riga-ele.team0 .ele-nome { color: var(--team0); }
+.riga-ele.team1 .ele-nome { color: var(--team1); }
+.ele-nome { font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ele-valore { font-weight: 800; font-variant-numeric: tabular-nums; }
+.ele-delta { font-weight: 800; font-variant-numeric: tabular-nums; min-width: 4.2em; text-align: right; }
+.ele-delta.su { color: #1e8a3a; }
+.ele-delta.giu { color: #c4142a; }
+.ele-delta.entra { animation: ele-pop .6s cubic-bezier(.2, 1.6, .4, 1) .3s both; }
+@keyframes ele-pop { from { transform: scale(.2); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.ele-dett { grid-column: 1 / -1; color: var(--muted); font-size: 12px; }
+.poco-spettacolo { margin: 0 0 6px; padding: 6px 8px; border-radius: 10px; background: #ffe0e0; color: #8a1020; font-weight: 800;
+  text-align: center; animation: ele-pop .5s ease-out both; }
+
+/* classifica */
+.classifica { margin: 0 16px 16px; overflow: auto; }
+.tab-classifica { width: 100%; border-collapse: collapse; font-size: 15px; }
+.tab-classifica th, .tab-classifica td { padding: 8px 6px; border-bottom: 1px solid var(--line); text-align: center; }
+.tab-classifica th:nth-child(2), .tab-classifica td.cl-nome { text-align: left; }
+.tab-classifica .cl-ele { font-weight: 800; font-variant-numeric: tabular-nums; }
+.tab-classifica tr.senza-partite { color: var(--muted); }
+.tab-classifica tr:nth-child(2) .cl-ele::after { content: " 👑"; }
+.pallino { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; background: var(--c); vertical-align: middle; }
+.box-grafico { margin-top: 6px; }
+.grafico-ele { width: 100%; height: auto; display: block; background: #fffdf5; border: 3px solid var(--outline); border-radius: 14px; }
+.grafico-ele .griglia { stroke: #ece2c9; stroke-width: 1; }
+.grafico-ele .asse { font-size: 11px; fill: var(--muted); }
+.grafico-ele .serie polyline { fill: none; stroke: var(--c); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+.grafico-ele .serie circle { fill: var(--c); stroke: #fff; stroke-width: 1.5; }
+.grafico-ele .serie.spenta { opacity: .15; }
+.legenda { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.chip-legenda { font: inherit; font-size: 13px; font-weight: 700; padding: 4px 10px; border-radius: 99px; cursor: pointer;
+  border: 2px solid var(--outline); background: #fff; color: var(--outline); }
+.chip-legenda.attiva { background: var(--c); color: #fff; }
+.chip-legenda.attiva .pallino { background: #fff; }
+
+@media (max-width: 600px) {
+  .tab-classifica { font-size: 13px; }
+  .tab-classifica th, .tab-classifica td { padding: 6px 3px; }
+  .posto-lobby .chip-ele { display: block; width: max-content; margin: 2px auto 0; }
+  .vs-ele { font-size: 10px; }
+  .riga-ele { column-gap: 6px; }
+}
+.box-grafico { max-width: 760px; }
+@media (max-width: 600px) {
+  #scr-lobby .barra { flex-wrap: wrap; gap: 6px; }
+  #scr-lobby .barra .btn { padding: 6px 10px; font-size: 14px; }
+  #scr-lobby .barra #lobby-nome { flex-basis: 100%; order: 3; text-align: center; }
+}

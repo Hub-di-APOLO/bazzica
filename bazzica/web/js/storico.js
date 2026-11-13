@@ -1,5 +1,5 @@
 // Pagina "Storico": elenco partite e dettaglio Mano per Mano.
-import { el, $, SQUADRE, apiGet } from "./util.js";
+import { el, $, SQUADRE, apiGet, conSegno } from "./util.js";
 
 const ORIGINI = { sparecchio: "sparecchio", bazzica: "Bazzica", piccola: "Piccola", grande: "Grande", asso: "assi" };
 
@@ -29,7 +29,7 @@ export async function mostraStorico() {
     tab.append(el("tr", { class: "cliccabile", onclick: () => dettaglio(p.id) },
       el("td", {}, data(p.inizio)), el("td", {}, p.tavolo), el("td", {}, p.variante + (p.margherita ? " + M. Hack" : "")),
       el("td", {}, ns), el("td", {}, eo), el("td", {}, `${p.punti_ns} – ${p.punti_eo}`), el("td", {}, p.n_mani),
-      el("td", { class: "esito" }, esito)));
+      el("td", { class: "esito" }, esito, p.valutata ? el("span", { class: "tag-ele", title: "Partita valutata eLE" }, "eLE") : null)));
   }
   box.append(tab);
 }
@@ -61,4 +61,10 @@ async function dettaglio(id) {
   }
   box.append(tab);
   if (p.esito) box.append(el("p", { class: "esito" }, p.esito === "pari" ? "Pareggio" : p.esito === "interrotta" ? "Partita interrotta" : `Vince ${p.esito}`));
+  if (p.ele && p.ele.length) {
+    box.append(el("h3", {}, "eLE"));
+    box.append(el("table", {}, el("tr", {}, ...["Giocatore", "Prima", "Dopo", "Variazione"].map((h) => el("th", {}, h))),
+      ...p.ele.map((r) => el("tr", {}, el("td", {}, r.nome), el("td", {}, Math.round(r.ele_prima)),
+        el("td", {}, Math.round(r.ele_dopo)), el("td", {}, conSegno(r.delta))))));
+  }
 }

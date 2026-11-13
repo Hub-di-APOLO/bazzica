@@ -71,10 +71,46 @@ export function store(key, value) {
   return null;
 }
 
+/** Intestazioni per le API: codice d'accesso e, se c'è, il token di sessione dell'account. */
+function intestazioni() {
+  const h = {};
+  const codice = store("bazzica_codice") || "";
+  const sessione = store("bazzica_sessione") || "";
+  if (codice) h["X-Bazzica-Codice"] = codice;
+  if (sessione) h.Authorization = `Bearer ${sessione}`;
+  return h;
+}
+
 /** GET di un'API del server (con il codice d'accesso, se impostato). */
 export async function apiGet(url) {
-  const codice = store("bazzica_codice") || "";
-  const r = await fetch(url, { headers: codice ? { "X-Bazzica-Codice": codice } : {} });
+  const r = await fetch(url, { headers: intestazioni() });
   if (!r.ok) throw new Error(r.status === 401 ? "Codice d'accesso richiesto" : `Errore ${r.status}`);
   return r.json();
+}
+
+/** POST JSON a un'API del server; in caso di errore lancia un Error con il messaggio del server. */
+export async function apiPost(url, dati = {}) {
+  const r = await fetch(url, { method: "POST", headers: { ...intestazioni(), "Content-Type": "application/json" },
+    body: JSON.stringify(dati) });
+  let corpo = null;
+  try { corpo = await r.json(); } catch (e) { /* risposta senza JSON */ }
+  if (!r.ok) {
+    const err = new Error((corpo && corpo.detail) || `Errore ${r.status}`);
+    err.status = r.status;
+    throw err;
+  }
+  return corpo;
+}
+
+/** eLE da mostrare accanto al nome: intero, con "?" nelle prime partite (provvisorio). */
+export function testoEle(p) {
+  if (!p || p.ele === undefined || p.ele === null) return "";
+  return `${Math.round(p.ele)}${p.provvisorio ? "?" : ""}`;
+}
+
+/** Numero con la virgola e il segno (es. +16,9). */
+export function conSegno(x, decimali = 1) {
+  const r = Number(Number(x).toFixed(decimali));
+  const v = Math.abs(r).toFixed(decimali).replace(".", ",");
+  return r > 0 ? `+${v}` : r < 0 ? `−${v}` : v;
 }

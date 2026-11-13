@@ -13,6 +13,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from ..engine import MAZZO
+from .account import ErroreAccount, LimiteTentativi, identita, normalizza_nome
 from .config import Config
 from .sicurezza import (codice_valido, ip_reale, Secchiello, ContaConnessioni, CHIUSURA_CODICE,
                         CHIUSURA_TROPPE_CONN, CHIUSURA_MESSAGGIO, CHIUSURA_FREQUENZA)
@@ -23,6 +24,9 @@ WEB = ROOT / "bazzica" / "web"
 ASSETS = ROOT / "assets"
 TOKEN_VALIDO = re.compile(r"[A-Za-z0-9_-]{1,64}")
 ATTESA_CODICE_ERRATO = 0.5     # secondi di attesa dopo un codice errato (rallenta i tentativi)
+ATTESA_LOGIN_ERRATO = 0.5      # secondi di attesa dopo un login errato
+ATTESA_SESSIONE_WS = 5.0       # secondi entro cui il client manda il token di sessione sulla WebSocket
+MAX_CORPO_ACCOUNT = 2048       # byte massimi del corpo delle richieste di registrazione e login
 
 
 def carte_disponibili() -> dict:
@@ -109,6 +113,107 @@ def create_app(manager: Manager | None = None, config: Config | None = None) -> 
         if not codice_valido(cfg.codice, fornito):
             raise HTTPException(401, "Codice d'accesso richiesto")
 
+    # ------------------------------------------------------------------ account
+    # Limiti: secchiello per IP su tutte le richieste degli account, blocco dopo troppi login falliti
+    # (per IP e per nome utente), numero massimo di registrazioni all'ora per IP.
+    secchielli_ip: dict[str, Secchiello] = {}
+    login_falliti = LimiteTentativi(cfg.login_max_falliti, cfg.login_finestra_min * 60, cfg.login_blocco_min * 60)
+    registrazioni = LimiteTentativi(cfg.registrazioni_ora, 3600, 3600)
+    app.state.login_falliti = login_falliti
+
+    def ip_richiesta(request: Request) -> str:
+        return ip_reale(request.client.host if request.client else None, request.headers.get("x-forwarded-for"),
+                        cfg.proxy_fidati)
+
+    async def richiesta_account(request: Request):
+        """Controlli comuni: codice d'accesso, frequenza per IP, corpo JSON piccolo. Restituisce (ip, dati)."""
+        verifica_codice(request)
+        ip = ip_richiesta(request)
+        sec = secchielli_ip.get(ip)
+        if sec is None:
+            if len(secchielli_ip) > 10000:
+                secchielli_ip.clear()
+            sec = secchielli_ip[ip] = Secchiello(1.0, 10)
+        if not sec.consenti():
+            raise HTTPException(429, "Troppe richieste, riprova tra poco")
+        corpo = await request.body()
+        if len(corpo) > MAX_CORPO_ACCOUNT:
+            raise HTTPException(413, "Richiesta troppo grande")
+        try:
+            dati = json.loads(corpo or b"{}")
+        except ValueError:
+            raise HTTPException(400, "Richiesta non valida") from None
+        if not isinstance(dati, dict):
+            raise HTTPException(400, "Richiesta non valida")
+        return ip, dati
+
+    def token_sessione(request: Request) -> str:
+        h = request.headers.get("authorization") or ""
+        return h[7:].strip() if h.lower().startswith("bearer ") else ""
+
+    def risposta_account(a: dict, sessione: str | None = None):
+        out = {"account": {"nome": a["nome"], "avatar": a.get("avatar"), **m.ele_pubblico(a["id"]),
+                           "partite": m.ele_cache_di(a["id"])["partite"]}}
+        if sessione:
+            out["sessione"] = sessione
+        return out
+
+    @app.post("/api/registrati")
+    async def api_registrati(request: Request):
+        ip, dati = await richiesta_account(request)
+        if registrazioni.bloccato(ip):
+            raise HTTPException(429, "Troppi account creati da questo indirizzo: riprova più tardi")
+        nome, password = dati.get("nome"), dati.get("password")
+        if not isinstance(nome, str) or not isinstance(password, str):
+            raise HTTPException(400, "Servono nome utente e password")
+        try:
+            a = await asyncio.to_thread(m.account.registra, nome, password)
+        except ErroreAccount as ex:
+            raise HTTPException(400, str(ex)) from None
+        registrazioni.fallito(ip)          # conta le registrazioni riuscite di questo IP
+        sessione = await asyncio.to_thread(m.account.nuova_sessione, a["id"])
+        return risposta_account(a, sessione)
+
+    @app.post("/api/accedi")
+    async def api_accedi(request: Request):
+        ip, dati = await richiesta_account(request)
+        nome, password = dati.get("nome"), dati.get("password")
+        if not isinstance(nome, str) or not isinstance(password, str) or len(password) > 200:
+            raise HTTPException(400, "Servono nome utente e password")
+        chiave_nome = "nome:" + normalizza_nome(nome)[:40]
+        if login_falliti.bloccato("ip:" + ip) or login_falliti.bloccato(chiave_nome):
+            raise HTTPException(429, f"Troppi tentativi sbagliati: riprova tra {cfg.login_blocco_min:g} minuti")
+        a = await asyncio.to_thread(m.account.verifica, nome, password)
+        if a is None:
+            login_falliti.fallito("ip:" + ip)
+            login_falliti.fallito(chiave_nome)
+            await asyncio.sleep(ATTESA_LOGIN_ERRATO)
+            raise HTTPException(401, "Nome utente o password errati")
+        login_falliti.riuscito(chiave_nome)
+        sessione = await asyncio.to_thread(m.account.nuova_sessione, a["id"])
+        return risposta_account(a, sessione)
+
+    @app.post("/api/esci")
+    async def api_esci(request: Request):
+        await richiesta_account(request)
+        tok = token_sessione(request)
+        if tok:
+            await asyncio.to_thread(m.account.revoca_sessione, tok)
+        return {"ok": True}
+
+    @app.get("/api/io")
+    async def api_io(request: Request):
+        verifica_codice(request)
+        a = await asyncio.to_thread(m.account.da_sessione, token_sessione(request))
+        if not a:
+            raise HTTPException(401, "Sessione non valida o scaduta")
+        return risposta_account(a)
+
+    @app.get("/api/classifica")
+    async def api_classifica(request: Request):
+        verifica_codice(request)
+        return m.storico.classifica()
+
     @app.get("/api/storico")
     async def api_storico(request: Request):
         verifica_codice(request)
@@ -149,10 +254,25 @@ def create_app(manager: Manager | None = None, config: Config | None = None) -> 
         token = ws.query_params.get("token") or ""
         if not TOKEN_VALIDO.fullmatch(token):
             token = m.nuovo_token()
+        account = None
+        if ws.query_params.get("auth"):
+            # il token di sessione arriva nel primo messaggio, mai nell'indirizzo (che finisce nei log)
+            try:
+                primo = json.loads(await asyncio.wait_for(ws.receive_text(), ATTESA_SESSIONE_WS))
+                sessione = primo.get("sessione") if isinstance(primo, dict) and primo.get("type") == "sessione" else None
+            except (asyncio.TimeoutError, ValueError):
+                sessione = None
+            except WebSocketDisconnect:
+                return
+            account = await asyncio.to_thread(m.account.da_sessione, sessione) if isinstance(sessione, str) else None
+            if account is None:
+                await ws.send_json({"type": "sessione_non_valida"})
+            else:
+                token = identita(account["id"])
         nome = ws.query_params.get("nome")
         secchiello = Secchiello(cfg.max_msg_secondo, cfg.raffica_msg)
         scartati = 0
-        await m.connetti(token, ws, nome, ws.query_params.get("avatar"))
+        await m.connetti(token, ws, nome, ws.query_params.get("avatar"), account=account)
         try:
             while True:
                 testo = await ws.receive_text()

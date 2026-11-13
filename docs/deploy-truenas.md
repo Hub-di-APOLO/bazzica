@@ -184,7 +184,8 @@ aggiungi:
    il record di DuckDNS sia visibile). Per vedere come va: **Apps → bazzica → Logs → caddy**; cerca
    `certificate obtained successfully`. Per questo passo non serve nemmeno il port forwarding.
 2. Apri **https://coverinas.duckdns.org:7845** dal telefono **con i dati mobili** (non dal Wi-Fi di casa): compare
-   la schermata del codice d'accesso, poi nome e avatar, poi la lobby. Senza `:7845` arrivi al NAS, come oggi.
+   la schermata del codice d'accesso, poi quella di accesso (account oppure "Gioca come ospite"), poi la lobby.
+   Senza `:7845` arrivi al NAS, come oggi.
 3. Manda agli amici l'indirizzo **con la porta** e il codice. Comodo: un collegamento sulla schermata Home del
    telefono (dal browser, *Aggiungi a schermata Home*), così la porta non va più scritta.
 
@@ -225,6 +226,26 @@ Se cambi solo il `Caddyfile` basta riavviare l'app (se cambia `deploy/truenas/ca
 anche `caddy-duckdns:locale` come al passo 3); se cambi solo le variabili d'ambiente: *Edit*, modifica il
 YAML, *Save*.
 
+## 7 bis. Account ed eLE (amministrazione)
+
+Gli account e la classifica eLE stanno nello stesso database dello storico (`data/storico.db`): le password
+sono salvate solo come hash e le sessioni solo come impronta del token. Non c'è il recupero via email: se un
+amico dimentica la password, gliene imposti una nuova tu dalla shell del NAS.
+
+```sh
+sudo docker ps --format '{{.Names}}' | grep bazzica          # nome del container, es. ix-bazzica-bazzica-1
+sudo docker exec -it ix-bazzica-bazzica-1 python -m bazzica.admin elenco
+sudo docker exec -it ix-bazzica-bazzica-1 python -m bazzica.admin password NOME   # chiede la nuova password
+sudo docker exec -it ix-bazzica-bazzica-1 python -m bazzica.admin revoca NOME     # chiude tutte le sue sessioni
+sudo docker exec -it ix-bazzica-bazzica-1 python -m bazzica.admin ricalcola       # rifà la classifica da zero
+```
+
+- `password` chiude anche tutte le sessioni dell'account: l'amico deve rientrare con la password nuova.
+- `ricalcola` serve solo se si cambiano i parametri in `bazzica/server/ele.py` (dopo `git pull` e
+  `docker build`): rifà tutta la classifica in ordine cronologico dalle statistiche salvate. Poi riavvia l'app,
+  così i tavoli mostrano subito i valori nuovi.
+- Sul PC gli stessi comandi si danno dalla cartella del progetto: `py -m bazzica.admin elenco`.
+
 ## 8. Backup dello storico
 
 Lo storico è un solo file: `/mnt/POOL/apps/bazzica/data/storico.db`.
@@ -253,5 +274,9 @@ Lo storico è un solo file: `/mnt/POOL/apps/bazzica/data/storico.db`.
 | `BAZZICA_PAUSA_MAX_ORE`        | 12       | ore prima di chiudere una partita senza nessuno connesso  |
 | `BAZZICA_INATTIVITA_MIN`       | 5        | minuti dopo cui un giocatore inattivo o disconnesso è sostituito da un bot |
 | `BAZZICA_RITARDO_BOT`          | 0.8-1.5  | pausa dei bot (secondi)                                   |
+| `BAZZICA_SESSIONE_GIORNI`      | —        | giorni senza usarla dopo cui scade una sessione (90)      |
+| `BAZZICA_LOGIN_MAX_FALLITI`    | —        | login sbagliati prima del blocco, per IP e per nome (5)   |
+| `BAZZICA_LOGIN_BLOCCO_MIN`     | —        | minuti di blocco dopo troppi login sbagliati (15)         |
+| `BAZZICA_REGISTRAZIONI_ORA`    | —        | nuovi account all'ora da uno stesso IP (5)                |
 
 L'elenco completo è in cima a `bazzica/server/config.py`. Per i limiti, 0 = nessun limite.
