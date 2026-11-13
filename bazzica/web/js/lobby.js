@@ -18,14 +18,16 @@ export function renderLobby(app, tavoli) {
     const stato = { lobby: "In preparazione", in_corso: "Partita in corso", finita: "Partita finita" }[t.stato];
     const giocatori = t.posti.map((p, i) => p ? `${POSTI[i]}: ${p.nome}` : null).filter(Boolean).join(" · ");
     const mio = t.miei && t.miei.length;
+    const sostituito = t.stato === "in_corso" && t.sostituiti && t.sostituiti.length;
     box.append(el("div", { class: "tavolo-item" },
       el("div", { class: "ti-info" },
         el("div", { class: "ti-nome" }, t.nome),
         el("div", { class: "ti-dett" }, `${t.variante}${t.margherita ? " + Margherita Hack" : ""} — ${stato} — ${occ}/4`),
         giocatori ? el("div", { class: "ti-dett" }, giocatori) : null),
       t.guardabile ? el("button", { class: "btn", onclick: () => app.guarda(t.id) }, "👀 Guarda") : null,
-      el("button", { class: "btn" + (mio ? " primario" : ""), onclick: () => app.vaiStanza(t.id) },
-        mio && t.stato === "in_corso" ? "Rientra" : "Apri")));
+      sostituito ? el("button", { class: "btn primario", onclick: () => app.riprendi(t.id) }, "Riprendi il posto") : null,
+      mio && t.stato === "in_corso" ? el("button", { class: "btn primario", onclick: () => app.entraInPartita(t.id) }, "Rientra") : null,
+      el("button", { class: "btn", onclick: () => app.vaiStanza(t.id) }, "Apri")));
   }
 }
 
@@ -62,26 +64,28 @@ export function renderStanza(app, t) {
   }
   croce.append(el("div", { class: "centro" }, el("div", { class: "vs" }, (t.squadre || SQUADRE)[0], el("b", {}, "VS"), (t.squadre || SQUADRE)[1])));
 
+  // impostazioni: le cambia chi ha creato il tavolo o chi è seduto, a partita non in corso
+  const puo = t.gestore && modificabile;
   const sel = $("#stanza-variante");
   riempiVarianti(sel, app.varianti, t.variante);
-  sel.disabled = !t.owner || !modificabile;
+  sel.disabled = !puo;
   $("#stanza-desc").textContent = VARIANTI_DESC[t.variante] || "";
   const mh = $("#stanza-mh");
   mh.checked = t.margherita;
-  mh.disabled = !t.owner || !modificabile;
+  mh.disabled = !puo;
   for (const [id, chiave] of [["#stanza-ts", "timer_scambio"], ["#stanza-tg", "timer_giocata"]]) {
     const sel = $(id);
     const v = String(t[chiave] ?? 0);
     if (![...sel.options].some((o) => o.value === v)) sel.append(el("option", { value: v }, `${v} s`));
     if (document.activeElement !== sel) sel.value = v;
-    sel.disabled = !t.owner || !modificabile;
+    sel.disabled = !puo;
   }
   // nomi delle squadre: non sovrascrivere mentre qualcuno sta scrivendo
   for (const i of [0, 1]) {
     const inp = $(`#stanza-sq${i}`);
     const nome = (t.squadre || SQUADRE)[i];
     if (document.activeElement !== inp) inp.value = nome === SQUADRE[i] ? "" : nome;
-    inp.disabled = !t.owner || !modificabile;
+    inp.disabled = !puo;
   }
   const pieno = t.posti.every(Boolean);
   const avvia = $("#btn-avvia");
@@ -90,7 +94,11 @@ export function renderStanza(app, t) {
   avvia.classList.toggle("nascosto", t.stato === "in_corso");
   $("#btn-rientra").classList.toggle("nascosto", !(t.stato !== "lobby" && t.miei.length));
   $("#btn-guarda").classList.toggle("nascosto", !t.guardabile);
-  $("#btn-elimina").classList.toggle("nascosto", !t.owner);
+  $("#btn-riprendi").classList.toggle("nascosto", !(t.stato === "in_corso" && t.sostituiti && t.sostituiti.length));
+  $("#btn-termina").classList.toggle("nascosto", !(t.stato === "in_corso" && t.gestore));
+  $("#btn-elimina").classList.toggle("nascosto", !t.puo_eliminare);
+  $("#stanza-nota").textContent = t.stato === "in_corso" && t.gestore
+    ? "Per cambiare le impostazioni termina prima la partita." : "";
 }
 
 function siediti(app, t, s) {
@@ -148,11 +156,23 @@ export function initLobby(app) {
   }
   $("#btn-avvia").addEventListener("click", () => app.rete.invia({ type: "avvia", tavolo: app.stanza }));
   $("#btn-rientra").addEventListener("click", () => app.entraInPartita(app.stanza));
+  $("#btn-riprendi").addEventListener("click", () => app.riprendi(app.stanza));
+  $("#btn-termina").addEventListener("click", () => app.confermaTermina(app.stanza, false));
   $("#btn-elimina").addEventListener("click", () => {
-    if (confirm("Eliminare il tavolo? Un'eventuale partita in corso verrà interrotta.")) {
-      app.rete.invia({ type: "elimina", tavolo: app.stanza });
-      app.mostra("lobby");
-    }
+    const t = app.tavoli[app.stanza];
+    const tid = app.stanza;
+    app.apriModal(el("div", {},
+      el("h3", {}, "Eliminare il tavolo?"),
+      el("p", {}, t && t.stato === "in_corso"
+        ? "La partita in corso finisce per tutti e nello storico risulterà interrotta."
+        : "Il tavolo sparisce dalla lobby."),
+      el("div", { class: "riga-btn" },
+        el("button", { class: "btn pericolo", onclick: () => {
+          app.rete.invia({ type: "elimina", tavolo: tid });
+          app.chiudiModal();
+          app.mostra("lobby");
+        } }, "Sì, elimina"),
+        el("button", { class: "btn", onclick: () => app.chiudiModal() }, "Annulla"))), true);
   });
   $("#btn-stanza-esci").addEventListener("click", () => app.mostra("lobby"));
 }

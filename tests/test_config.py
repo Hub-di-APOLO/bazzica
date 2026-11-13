@@ -59,3 +59,10 @@ def test_create_app_usa_le_cartelle_configurate(tmp_path):
         assert c.get("/api/storico").status_code == 200
     assert (tmp_path / "d" / "storico.db").exists() and (tmp_path / "l").is_dir()
     assert app.state.manager.cartella_log == str(tmp_path / "l")
+
+
+def test_inattivita_da_ambiente():
+    from bazzica.server.config import Config
+    assert Config.da_ambiente({}).inattivita_min == 5
+    assert Config.da_ambiente({"BAZZICA_INATTIVITA_MIN": "0"}).inattivita_min == 0
+    assert Config.da_ambiente({"BAZZICA_INATTIVITA_MIN": "2.5"}).inattivita_min == 2.5

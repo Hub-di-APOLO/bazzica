@@ -14,13 +14,14 @@ services:
     user: "568:568"                  # utente apps di TrueNAS
     environment:
       TZ: Europe/Rome
-      BAZZICA_CODICE: "elebazzica"
+      BAZZICA_CODICE: "cambia-questo-codice"
       BAZZICA_PROXY_FIDATI: "172.30.77.20"   # solo Caddy può indicare l'IP reale dei client
       BAZZICA_MAX_TAVOLI: "50"
       BAZZICA_MAX_TAVOLI_TOKEN: "5"
       BAZZICA_MAX_CONN_IP: "20"
       BAZZICA_TAVOLO_INATTIVO_MIN: "180"
       BAZZICA_PAUSA_MAX_ORE: "12"
+      BAZZICA_INATTIVITA_MIN: "5"
     volumes:
       - /mnt/NAS/apps/bazzica/data:/app/data
       - /mnt/NAS/apps/bazzica/logs:/app/logs
@@ -46,7 +47,7 @@ services:
     environment:
       TZ: Europe/Rome
       BAZZICA_DOMINIO: "coverinas.duckdns.org"
-      DUCKDNS_TOKEN: "2f786f35-70bf-49d2-816b-287900796ee8"   # per la verifica DNS del certificato
+      DUCKDNS_TOKEN: "IL-TUO-TOKEN-DUCKDNS"   # per la verifica DNS del certificato
     ports:
       - "7845:443"                   # modem: porta 7845 esterna → 192.168.0.32:7845
       - "7845:443/udp"               # HTTP/3 (facoltativa: stessa regola anche in UDP sul modem)

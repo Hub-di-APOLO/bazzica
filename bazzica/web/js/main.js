@@ -106,11 +106,46 @@ class App {
   chiudiModal() { $("#ov-modal").classList.add("nascosto"); }
 
   vaiStanza(tid) {
-    this.stanza = tid;
     const t = this.tavoli[tid];
+    if (!t) { toast("Il tavolo non esiste più"); this.mostra("lobby"); return; }
+    this.stanza = tid;
+    // aprendo la stanza di una partita in corso si resta nella stanza (per terminarla o eliminare il
+    // tavolo): in partita si entra con "Rientra"
+    if (t.stato === "in_corso") this.uscitoDa = tid;
     this.mostra("stanza");
     if (t) renderStanza(this, t);
     this.rete.invia({ type: "apri", tavolo: tid });
+  }
+
+  /** Riprende il posto che nel frattempo era di un bot, poi entra in partita. */
+  riprendi(tid) {
+    this.attendiRientro = tid;
+    if (this.partita.tid === tid) this.partita.tid = null;   // si riparte dagli stati nuovi (niente riepiloghi vecchi)
+    this.rete.invia({ type: "riprendi", tavolo: tid });
+  }
+
+  /** Il server ci ha sostituito con un bot (uscita volontaria, inattività o disconnessione). */
+  sostituito(m) {
+    this.partita.miei = [];
+    if (m.motivo === "uscito") return;               // la stanza è già aperta da chi è uscito
+    const tid = m.tavolo;
+    this.uscitoDa = tid;
+    if (m.interrotta) {
+      toast("La partita è stata chiusa: non c'erano altri giocatori");
+      if (this.schermo === "gioco") this.mostra("lobby");
+      return;
+    }
+    const perche = m.motivo === "inattivo"
+      ? "Non hai giocato per qualche minuto mentre gli altri ti aspettavano."
+      : "Sei rimasto disconnesso per qualche minuto.";
+    const box = el("div", {},
+      el("p", { class: "grande-testo" }, "Al tuo posto gioca un bot"),
+      el("p", {}, `${perche} La partita è andata avanti con un bot al tuo posto: puoi riprenderlo quando vuoi.`),
+      el("div", { class: "riga-btn" },
+        el("button", { class: "btn primario", onclick: () => { this.chiudiModal(); this.riprendi(tid); } }, "Riprendi il posto"),
+        el("button", { class: "btn", onclick: () => { this.chiudiModal(); this.mostra("lobby"); } }, "Lobby")));
+    if (this.schermo !== "gioco") this.mostra("lobby");
+    this.apriModal(box);
   }
 
   /** Guarda una partita tra soli bot (si vedono tutte le carte, a ritmo umano). */
@@ -156,7 +191,7 @@ class App {
   }
 
   /** Conferma dentro il gioco (niente finestra del browser). */
-  confermaTermina(tid) {
+  confermaTermina(tid, dalGioco = true) {
     const box = el("div", {},
       el("h3", {}, "Terminare la partita?"),
       el("p", {}, "La partita finisce per tutti i giocatori e nello storico risulterà interrotta."),
@@ -166,7 +201,7 @@ class App {
           this.chiudiModal();
           toast("Partita terminata");
         } }, "Sì, termina"),
-        el("button", { class: "btn", onclick: () => this.menuGioco() }, "Annulla")));
+        el("button", { class: "btn", onclick: () => (dalGioco ? this.menuGioco() : this.chiudiModal()) }, "Annulla")));
     this.apriModal(box, true);
   }
 
@@ -214,7 +249,11 @@ class App {
         this.partita.ricevi(m);
         break;
       }
+      case "sostituito":
+        this.sostituito(m);
+        break;
       case "errore":
+        if (this.attendiRientro) this.attendiRientro = null;
         toast(m.messaggio);
         this.partita.inviato = false;
         if (this.schermo === "gioco") this.partita.render();
@@ -229,6 +268,11 @@ class App {
     // "miei" e "owner" arrivano personalizzati per questo token
     this.tavoli[t.id] = t;
     if (this.schermo === "stanza" && this.stanza === t.id) renderStanza(this, t);
+    if (this.attendiRientro === t.id && t.miei.length && t.stato === "in_corso") {
+      this.attendiRientro = null;
+      this.entraInPartita(t.id);
+      return;
+    }
     if (prima && prima.stato !== "in_corso" && t.stato === "in_corso" && t.miei.length && this.stanza === t.id) {
       this.entraInPartita(t.id);
     }

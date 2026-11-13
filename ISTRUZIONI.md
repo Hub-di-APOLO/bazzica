@@ -38,17 +38,20 @@ Dallo stesso browser siediti su più posti: dal secondo in poi si apre una fines
 ## Durante la partita
 - Tocca una carta: compaiono le prese possibili con l'anteprima (Scopa, Piccola, Grande, assi, credito); tocca l'opzione per giocare.
 - **Bazzica!** apre la scelta delle Bazziche valide (con il valore del 7 bello).
-- Il pulsante tondo 💬 **Chat** (in basso a destra) apre "Che Palo!" e tutte le frasi (una esclamazione ogni 3 secondi al massimo).
+- Il pulsante tondo 💬 **Chat** (in basso a destra; sul telefono accanto alla mano) apre "Che Palo!" e tutte le frasi (una esclamazione ogni 3 secondi al massimo).
 - **Pre-mossa**: mentre giocano gli altri puoi già toccare la carta che vuoi giocare (diventa "pronta"); quando tocca a te compaiono subito le sue prese e basta premere il pulsante.
 - **Striscia** (pulsante azzurro 🃏): si può premere solo mentre gioca il giocatore che viene prima di te; fa comparire vicino a lui una carta strisciata sul tavolo, per mettergli fretta.
 - **Timer** (durate scelte nella stanza; di base "Nessuno", cioè disattivati): allo scadere dello scambio chi non ha passato passa una carta a caso; allo scadere del tempo per una carta gioca il computer al posto tuo. In pausa per disconnessione il timer si ferma e riparte da capo.
 - **Partita tra soli bot**: metti 4 bot e premi "Avvia partita" (oppure "👀 Guarda" nella lobby): la partita si guarda a ritmo umano, con tutte le carte scoperte. I bot aspettano che le animazioni siano finite prima di giocare.
 - La **chat** (pulsante "Chat", con "Che Palo!" e le frasi) si apre solo quando lo scambio delle carte è finito.
 - Dal menu ☰ qualsiasi giocatore seduto può **terminare la partita** (conferma dentro il gioco): tutti vedono "Partita interrotta" e possono tornare al tavolo.
+- **Tavoli con una partita in corso**: "Apri" nella lobby porta alla stanza del tavolo (in partita si entra con "Rientra"). Chi ha creato il tavolo o chi è seduto può terminare la partita, cambiare poi le impostazioni ed eliminare il tavolo; un tavolo senza nessun giocatore connesso può eliminarlo chiunque.
 - Il pulsante 👀 **Ultima presa** (in alto a sinistra) mostra chi ha fatto l'ultima presa della Mano e con quali carte.
 - Nello scambio: scegli una delle tue carte, poi **Passa** o **Passa veloce**. La carta del compagno si vede solo quando avete passato entrambi; di lui sai solo se ha già passato e se ha passato veloce.
-- A fine Mano compare il riepilogo; la Mano successiva parte quando tutti hanno premuto **Continua**.
+- A fine Mano compare il riepilogo; la Mano successiva parte quando tutti hanno premuto **Continua**. Con **Esci dalla partita** si torna alla stanza del tavolo e al proprio posto gioca un bot; se escono tutti i giocatori la partita viene chiusa come "interrotta".
 - Se un giocatore si disconnette la partita va in pausa finché non riapre la pagina dallo stesso browser (la sessione è ricordata).
+- **Inattività**: chi non gioca per 5 minuti in tutto quando tocca a lui (anche il "Continua" di fine Mano), oppure resta disconnesso per 5 minuti, viene sostituito da un bot, ma solo se c'è almeno un altro giocatore connesso che aspetta (da soli contro i bot la partita aspetta). Ogni azione azzera il conteggio. Durata: `BAZZICA_INATTIVITA_MIN`.
+- Chi è stato sostituito da un bot (uscito o inattivo) può **riprendere il posto** finché la partita è in corso, dalla lobby o dalla stanza del tavolo: riprende le carte che ha in mano il bot.
 - Il pulsante con l'altoparlante attiva/disattiva i suoni; i file opzionali vanno in `assets/sounds/` (vedi `LEGGIMI.txt`).
 
 ## Log e storico
@@ -61,7 +64,7 @@ Tutte facoltative; su Windows si impostano con `set NOME=valore` prima di `pytho
 - `BAZZICA_PORTA`, `BAZZICA_HOST`: porta e indirizzo di ascolto (`--port`/`--host` hanno la precedenza).
 - `BAZZICA_DATI`, `BAZZICA_LOG`: cartelle dello storico e dei log.
 - `BAZZICA_CODICE`: codice d'accesso. Se impostato, chi apre il gioco deve inserirlo (una volta per dispositivo).
-- Limiti contro gli abusi (`BAZZICA_MAX_TAVOLI`, `BAZZICA_MAX_TAVOLI_TOKEN`, `BAZZICA_MAX_CONN_IP`, `BAZZICA_MAX_MESSAGGIO`, `BAZZICA_MAX_MSG_SECONDO`) e pulizia automatica (`BAZZICA_TAVOLO_INATTIVO_MIN`, default 180 minuti per i tavoli non avviati abbandonati; `BAZZICA_PAUSA_MAX_ORE`, default 12 ore per le partite senza nessuno connesso). 0 = nessun limite.
+- Limiti contro gli abusi (`BAZZICA_MAX_TAVOLI`, `BAZZICA_MAX_TAVOLI_TOKEN`, `BAZZICA_MAX_CONN_IP`, `BAZZICA_MAX_MESSAGGIO`, `BAZZICA_MAX_MSG_SECONDO`) e pulizia automatica (`BAZZICA_TAVOLO_INATTIVO_MIN`, default 180 minuti per i tavoli non avviati abbandonati; `BAZZICA_PAUSA_MAX_ORE`, default 12 ore per le partite senza nessuno connesso; `BAZZICA_INATTIVITA_MIN`, default 5 minuti prima di sostituire con un bot un giocatore inattivo). 0 = nessun limite.
 
 Stato del server: `http://localhost:8000/api/salute`.
 

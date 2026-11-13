@@ -23,6 +23,9 @@ Variabili (tutte facoltative):
                                inattivo viene eliminato; 0 = mai            (180)
   BAZZICA_PAUSA_MAX_ORE        ore dopo cui una partita in pausa senza
                                umani connessi viene terminata; 0 = mai      (12)
+  BAZZICA_INATTIVITA_MIN       minuti dopo cui un giocatore inattivo (tocca
+                               a lui e non gioca) o disconnesso viene
+                               sostituito da un bot; 0 = mai                (5)
 Per i limiti numerici 0 significa "nessun limite".
 """
 from __future__ import annotations
@@ -91,6 +94,7 @@ class Config:
     proxy_fidati: tuple = field(default_factory=tuple)
     tavolo_inattivo_min: float = 180.0
     pausa_max_ore: float = 12.0
+    inattivita_min: float = 5.0
 
     @classmethod
     def da_ambiente(cls, env=None) -> "Config":
@@ -111,6 +115,7 @@ class Config:
             proxy_fidati=_reti(_str(env, "BAZZICA_PROXY_FIDATI")),
             tavolo_inattivo_min=_num(env, "BAZZICA_TAVOLO_INATTIVO_MIN", 180.0, float),
             pausa_max_ore=_num(env, "BAZZICA_PAUSA_MAX_ORE", 12.0, float),
+            inattivita_min=_num(env, "BAZZICA_INATTIVITA_MIN", 5.0, float),
         )
 
     @property

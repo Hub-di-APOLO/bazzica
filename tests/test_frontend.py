@@ -49,3 +49,17 @@ def test_url_websocket_ws_o_wss():
     for (loc, inizio), url in zip(CASI, risultati):
         assert url.startswith(inizio), url
         assert url.endswith("token=t&nome=Bea%20%26%20Co&codice=7%20bello")   # avatar vuoto omesso
+
+
+@pytest.mark.skipif(not shutil.which("node"), reason="serve Node.js per eseguire il JavaScript")
+def test_frasi_uguali_tra_server_e_pagina():
+    """Le frasi della chat si inviano per indice: l'elenco del browser deve coincidere con quello del server."""
+    from bazzica.server.tables import FRASI
+    script = f"""
+      const {{ FRASI }} = await import({json.dumps((WEB / "js" / "util.js").as_uri())});
+      console.log(JSON.stringify(FRASI));
+    """
+    r = subprocess.run(["node", "--input-type=module", "-e", script], capture_output=True, text=True, timeout=30)
+    assert r.returncode == 0, r.stderr
+    assert json.loads(r.stdout) == FRASI
+    assert "Che provocateur" in FRASI

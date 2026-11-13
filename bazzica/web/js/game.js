@@ -46,6 +46,9 @@ export class Partita {
     this.ackInviato = false;
     $("#ov-passa").addEventListener("click", () => this.mostraMano());
     window.addEventListener("resize", () => this.adattaTavola());
+    // lo spazio centrale cambia anche senza "resize" della finestra (pulsanti Striscia e Chat che
+    // compaiono, mano che si riempie, schermata appena mostrata): si ricalcola ogni volta
+    if (window.ResizeObserver) new ResizeObserver(() => this.adattaTavola()).observe($("#centro"));
   }
 
   /** Nomi delle squadre scelti nella stanza (predefiniti: "Squadra 1" e "Squadra 2"). */
@@ -211,6 +214,7 @@ export class Partita {
     }
 
     this.adattaTavola();
+    requestAnimationFrame(() => this.adattaTavola());   // dopo che mano e pulsanti hanno preso posto
 
     // prese
     this.renderPrese($("#prese-mia"), squadra(v), obs);
@@ -238,6 +242,10 @@ export class Partita {
       this.mostraRiepilogo(obs.storico_mani[obs.storico_mani.length - 1], info);
     } else if (this.modalRiepilogo && obs.fase === "fine_mano") {
       this.aggiornaAttesaAck(info);
+    } else if (this.modalRiepilogo && obs.fase !== "fine_partita") {
+      // riepilogo rimasto aperto ma la Mano successiva è già iniziata (es. rientro in partita)
+      this.modalRiepilogo = false;
+      this.app.chiudiModal();
     }
     if (obs.fase === "fine_partita" && !this.modalFinale) {
       this.mostraFinale(obs, info);
@@ -303,13 +311,21 @@ export class Partita {
     if (!t || !box) return;
     const n = Math.max(1, t.querySelectorAll(".carta").length);
     const W = box.clientWidth - 12, H = box.clientHeight - 12, gap = 6, R = 1.768;
-    let best = 30;
+    // la disposizione che dà le carte più grandi; a parità (quasi) si preferisce quella più "quadrata"
+    // (4 carte: 2×2 invece di una fila di 4)
+    let best = 30, bestCols = n;
     for (let rows = 1; rows <= 5; rows++) {
       const cols = Math.ceil(n / rows);
-      const w = Math.min(112, (W - gap * (cols - 1)) / cols, (H - gap * (rows - 1)) / rows / R);
-      best = Math.max(best, Math.floor(w));
+      const w = Math.floor(Math.min(112, (W - gap * (cols - 1)) / cols, (H - gap * (rows - 1)) / rows / R));
+      const quasiPari = w >= best - 3 && w <= best + 3;
+      if (w > best + 3 || (quasiPari && Math.abs(cols - rows) < Math.abs(bestCols - Math.ceil(n / bestCols)))) {
+        best = Math.max(30, w);
+        bestCols = cols;
+      }
     }
     t.style.setProperty("--tcw", best + "px");
+    // larghezza della tavola = esattamente `bestCols` carte per riga
+    t.style.setProperty("max-width", `${bestCols * best + gap * (bestCols - 1) + 12}px`);
   }
 
   targhetta(s, obs, info) {
@@ -720,9 +736,29 @@ export class Partita {
     const fine = st && st.obs.fase === "fine_partita";
     // a partita finita il riepilogo si apre dalla schermata finale: si torna indietro a quella
     const indietro = el("button", { class: "btn primario", onclick: () => this.mostraFinale(st.obs, st.info, false) }, "Indietro");
+    // uscire dalla partita: al proprio posto continua un bot (si può riprendere il posto dopo)
+    const esci = fine || this.spettatore ? null
+      : el("button", { class: "btn", onclick: () => this.confermaEsci(rie, info) }, "Esci dalla partita");
     this.app.apriModal(el("div", {}, el("h3", {}, `Fine della Mano ${rie.mano}`), tab,
-      el("div", { class: "riga-btn" }, fine ? indietro : btn), fine ? null : attesa));
+      el("div", { class: "riga-btn" }, fine ? indietro : btn, esci), fine ? null : attesa));
     this.aggiornaAttesaAck(info);
+  }
+
+  confermaEsci(rie, info) {
+    const tid = this.tid;
+    const box = el("div", {},
+      el("h3", {}, "Uscire dalla partita?"),
+      el("p", {}, "Al tuo posto giocherà un bot e la partita continua per gli altri. "
+        + "Potrai riprendere il posto dalla lobby o dalla stanza del tavolo."),
+      el("div", { class: "riga-btn" },
+        el("button", { class: "btn pericolo", onclick: () => {
+          this.app.rete.invia({ type: "esci", tavolo: tid });
+          this.modalRiepilogo = false;
+          this.app.chiudiModal();
+          this.app.vaiStanza(tid);
+        } }, "Sì, esci"),
+        el("button", { class: "btn", onclick: () => { this.modalRiepilogo = false; this.mostraRiepilogo(rie, info); } }, "Annulla")));
+    this.app.apriModal(box);
   }
 
   aggiornaAttesaAck(info) {
@@ -854,6 +890,13 @@ export class Partita {
         if (g) fx.fumetto(g.getBoundingClientRect(), "😤");
         break;
       }
+      case "sostituito":
+        toast(e.motivo === "uscito" ? `${e.nome} ha lasciato la partita: al suo posto gioca un bot 🤖`
+          : `${e.nome} ${e.motivo === "inattivo" ? "non gioca" : "non è connesso"} da qualche minuto: al suo posto gioca un bot 🤖`);
+        break;
+      case "rientrato":
+        toast(`${e.nome} ha ripreso il suo posto`);
+        break;
       case "tempo_scaduto":
         if (e.fase === "scambio") toast("⏱ Tempo scaduto: chi non aveva scambiato ha passato una carta a caso");
         else toast(`⏱ Tempo scaduto: per ${info.nomi[e.seat]} gioca il computer`);
@@ -1110,24 +1153,32 @@ export class Partita {
   }
 
   async animaPiccola(e, chi, src, dst) {
+    const tav = $("#tavola");
     const target = $(`#tavola .carta[data-carta="${e.presa[0]}"]`);
     const tr = target ? target.getBoundingClientRect() : dst;
     const c = fx.centro(tr);
+    // 1) arrivo a lampo sulla carta appena calata
     suona("piccola");
     fx.lineeVelocita(c.x, c.y);
     fx.saetta(fx.centro(src), c);
-    await fx.vola(carta(e.carta), src, tr, { durata: 130 });
+    await fx.vola(carta(e.carta), src, tr, { durata: 160 });
     fx.sbuffi(c.x, c.y, 12);
     const giocata = carta(e.carta);
-    $("#tavola").append(giocata);
-    if (target) target.classList.add("evidenzia");
-    const zip = fx.bannerZip("PICCOLA!", `${chi} — lampo!`);
-    this.reazioni(e.squadra, (e.girate || []).length);
+    tav.append(giocata);
+    this.adattaTavola();
     const elems = [giocata, target].filter(Boolean);
+    // 2) "PICCOLA!" passa veloce (il banner copre il centro del tavolo)...
+    this.reazioni(e.squadra, (e.girate || []).length);
+    await fx.bannerZip("PICCOLA!", `${chi} — lampo!`);
+    // 3) ...poi si vedono bene le due carte prese: illuminate, il resto del tavolo in ombra
+    tav.classList.add("in-ombra");
+    elems.forEach((x) => x.classList.add("presa-piccola"));
+    await sleep(1100);
+    tav.classList.remove("in-ombra");
+    // 4) e volano nel mazzo delle prese
     const dest = this.rectPrese(e.squadra);
-    fx.saetta(c, fx.centro(dest));
-    await this.volaAlleTavole(elems, e.squadra, 170);
-    await zip;
+    fx.saetta(fx.centro(giocata.getBoundingClientRect()), fx.centro(dest));
+    await this.volaAlleTavole(elems, e.squadra, 380);
     await this.effettiFinali(e);
   }
 

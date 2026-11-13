@@ -116,6 +116,12 @@ def descrivi_evento(e: dict, nomi_giocatori=None, squadre=NOMI_SQUADRE) -> str |
         v = e["vincitore"]
         esito = "PAREGGIO" if v == "pari" else f"vince {squadre[v]}"
         return f"\n##### Fine partita dopo {e['mani']} Mani: {esito} ({e['punteggi'][0]} - {e['punteggi'][1]}) #####"
+    if t == "sostituito":
+        motivo = {"uscito": "è uscito dalla partita", "inattivo": "è inattivo da troppo tempo",
+                  "disconnesso": "è disconnesso da troppo tempo"}.get(e.get("motivo"), "è uscito")
+        return f"  {e['nome']} ({NOMI_POSTI[e['seat']]}) {motivo}: al suo posto gioca un bot."
+    if t == "rientrato":
+        return f"  {e['nome']} ({NOMI_POSTI[e['seat']]}) riprende il suo posto al posto del bot."
     return None
 
 

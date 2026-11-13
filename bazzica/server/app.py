@@ -62,10 +62,12 @@ def create_app(manager: Manager | None = None, config: Config | None = None) -> 
     @asynccontextmanager
     async def ciclo_vita(_app):
         pulizia = asyncio.create_task(m.ciclo_pulizia())
+        inattivita = asyncio.create_task(m.ciclo_inattivita())
         try:
             yield
         finally:
             pulizia.cancel()
+            inattivita.cancel()
 
     app = FastAPI(title="Bazzica", lifespan=ciclo_vita)
     app.state.manager = m

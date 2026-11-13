@@ -737,3 +737,54 @@ body[data-schermo="gioco"] .sfondo-scienziati img { opacity: .8; width: clamp(64
   .barra .spazio { flex-basis: 100%; height: 0; }
   .barra .btn { padding: 8px 12px; }
 }
+
+/* ---------- telefoni in verticale: colonne laterali strette e fisse, così il centro del tavolo
+   resta largo (le carte in tavola si dispongono 2×2 e non in colonna) ---------- */
+@media (max-width: 600px) {
+  .tappeto { grid-template-columns: 62px minmax(0, 1fr) 62px; padding: 18px 12px; gap: 4px 4px; }
+  .tappeto > .cella { min-width: 0; }
+  .posto.pos-1, .posto.pos-3 { max-width: 62px; }
+  .posto.pos-1 .g-nome, .posto.pos-3 .g-nome { max-width: 62px; font-size: 10px; padding: 1px 5px; border-width: 2px; }
+  .posto.pos-2 { gap: 6px; justify-content: center; }
+  /* prese: mazzetto sopra, conteggio sotto */
+  .prese, .prese-mia, .prese-avv { flex-direction: column; gap: 3px; align-items: center; }
+  .prese-avv { flex-direction: column; }
+  .prese-info, .prese-avv .prese-info { align-items: center; text-align: center; font-size: 10px; padding: 2px 5px; border-width: 2px; }
+  /* Striscia e Chat escono dal tavolo: in basso ai lati della mano, a portata di pollice */
+  .c-bdx { gap: 0; }
+  .btn-striscia { position: fixed; left: 10px; bottom: calc(14px + env(safe-area-inset-bottom)); z-index: 20; width: 52px; height: 52px; }
+  .frasi-box { position: fixed; right: 10px; bottom: calc(14px + env(safe-area-inset-bottom)); z-index: 20; }
+  .btn-frasi-grande { width: 58px; height: 58px; }
+  .btn-striscia .ico, .btn-frasi-grande .ico { font-size: 20px; }
+  .btn-tondo .ico { width: 42px; height: 42px; font-size: 20px; }
+}
+
+/* ---------- telefoni: HUD su due righe (menu, Mano, Turno e audio sopra; punteggi sotto) ---------- */
+@media (max-width: 600px) {
+  .hud { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "sx dx" "punti punti"; gap: 4px 8px; padding: 4px 10px; }
+  .hud-sx { grid-area: sx; }
+  .hud-dx { grid-area: dx; }
+  .hud-punti { grid-area: punti; }
+  .hud-punti .punti-squadra { flex: 1; min-width: 0; }
+  .hud .btn.icona { padding: 4px 10px; }
+}
+
+/* ---------- scelta dell'avatar: le colonne si stringono invece di uscire dal bordo ---------- */
+.scelta-avatar { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.scelta-avatar button { width: 100%; min-width: 0; font-size: clamp(20px, 6.5vw, 30px); line-height: 1; }
+@media (max-width: 420px) {
+  .scelta-avatar { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+}
+
+/* ---------- Piccola: le due carte prese restano illuminate un attimo ---------- */
+.tavola.in-ombra .carta:not(.presa-piccola) { opacity: .35; filter: grayscale(.5); transition: opacity .2s, filter .2s; }
+.tavola .carta.presa-piccola { position: relative; z-index: 3; animation: presa-piccola .55s ease-in-out infinite alternate; }
+@keyframes presa-piccola {
+  from { transform: translateY(-4px) scale(1.04); box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--outline), 0 0 14px 4px var(--sky); }
+  to   { transform: translateY(-8px) scale(1.1);  box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--outline), 0 0 30px 10px var(--sky); } }
+
+/* ---------- lobby su telefono: i pulsanti del tavolo vanno sotto la descrizione ---------- */
+@media (max-width: 600px) {
+  .tavolo-item { flex-wrap: wrap; justify-content: flex-end; }
+  .tavolo-item .ti-info { flex-basis: 100%; }
+}

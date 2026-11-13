@@ -251,6 +251,7 @@ Lo storico è un solo file: `/mnt/POOL/apps/bazzica/data/storico.db`.
 | `BAZZICA_MAX_CONN_IP`          | 20       | connessioni aperte da uno stesso IP                       |
 | `BAZZICA_TAVOLO_INATTIVO_MIN`  | 180      | minuti prima di eliminare un tavolo non avviato e vuoto   |
 | `BAZZICA_PAUSA_MAX_ORE`        | 12       | ore prima di chiudere una partita senza nessuno connesso  |
+| `BAZZICA_INATTIVITA_MIN`       | 5        | minuti dopo cui un giocatore inattivo o disconnesso è sostituito da un bot |
 | `BAZZICA_RITARDO_BOT`          | 0.8-1.5  | pausa dei bot (secondi)                                   |
 
 L'elenco completo è in cima a `bazzica/server/config.py`. Per i limiti, 0 = nessun limite.

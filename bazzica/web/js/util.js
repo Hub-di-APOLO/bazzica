@@ -4,7 +4,8 @@ export const POSTI = ["Nord", "Est", "Sud", "Ovest"];
 export const SQUADRE = ["Squadra 1", "Squadra 2"];   // nomi predefiniti, il tavolo può cambiarli
 export const AVATAR = ["🦊", "🐻", "🐸", "🦁", "🐼", "🐵", "🦉", "🐙", "🐱", "🐲", "🐢", "🦭"];
 export const FRASI = ["Veloce?!?", "Di#p?@co", "Praticamente pari", "Che culo...", "Aperta come...",
-  "Faccio una giocata un po' particolare", "Stai giocando con paura", "Sei MATTO?!", "Ma hai tutti gli assi??", "CHE CULO"];
+  "Faccio una giocata un po' particolare", "Stai giocando con paura", "Sei MATTO?!", "Ma hai tutti gli assi??", "CHE CULO",
+  "Che provocateur"];
 export const SEMI = ["denari", "coppe", "spade", "bastoni"];
 const NOMI_VALORE = { 1: "Asso", 2: "Due", 3: "Tre", 4: "Quattro", 5: "Cinque", 6: "Sei", 7: "Sette", 8: "Fante", 9: "Cavallo", 10: "Re" };
 export const SIMBOLI = { denari: "◆", coppe: "♥", spade: "♠", bastoni: "♣" };

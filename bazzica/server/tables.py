@@ -21,7 +21,8 @@ NOMI_BOT = ["Bot Nord", "Bot Est", "Bot Sud", "Bot Ovest"]
 AVATAR = ["🦊", "🐻", "🐸", "🦁", "🐼", "🐵", "🦉", "🐙", "🐱", "🐲", "🐢", "🦭"]
 AVATAR_BOT = "🤖"
 FRASI = ["Veloce?!?", "Di#p?@co", "Praticamente pari", "Che culo...", "Aperta come...",
-         "Faccio una giocata un po' particolare", "Stai giocando con paura", "Sei MATTO?!", "Ma hai tutti gli assi??", "CHE CULO"]
+         "Faccio una giocata un po' particolare", "Stai giocando con paura", "Sei MATTO?!", "Ma hai tutti gli assi??", "CHE CULO",
+         "Che provocateur"]
 
 
 class Tavolo:
@@ -58,6 +59,9 @@ class Tavolo:
         self.timer_scadenza = None             # time.monotonic() della scadenza
         self.timer_totale = 0.0
         self.terminata_da = None
+        self.attesa: dict = {}                 # token -> secondi in cui tocca a lui senza che agisca
+        self.disconnesso_da: dict = {}         # token -> time.monotonic() della disconnessione
+        self.ultimo_controllo = None           # ultimo controllo dell'inattività
 
     # ------------------------------------------------------------------ info
     def tokens_umani(self):
@@ -65,6 +69,22 @@ class Tavolo:
 
     def posti_di(self, token):
         return [s for s, p in enumerate(self.posti) if p and p["tipo"] == "umano" and p["token"] == token]
+
+    def sostituiti_di(self, token):
+        """Posti in cui ``token`` è stato sostituito da un bot durante la partita in corso."""
+        return [s for s, p in enumerate(self.posti)
+                if p and p.get("sostituisce") and p["sostituisce"]["token"] == token]
+
+    def puo_gestire(self, token):
+        """Creatore del tavolo o giocatore seduto: può cambiare impostazioni, terminare, eliminare."""
+        return token == self.owner or token in self.tokens_umani()
+
+    def abbandonato(self):
+        """Nessun giocatore seduto connesso e creatore non connesso."""
+        return not any(self.m.connesso(k) for k in self.tokens_umani() | {self.owner})
+
+    def puo_eliminare(self, token):
+        return self.puo_gestire(token) or self.abbandonato()
 
     def nomi(self):
         return [p["nome"] if p else "—" for p in self.posti]
@@ -81,6 +101,9 @@ class Tavolo:
         return {
             "miei": self.posti_di(token) if token else [],
             "owner": token is not None and token == self.owner,
+            "gestore": token is not None and self.puo_gestire(token),
+            "puo_eliminare": token is not None and self.puo_eliminare(token),
+            "sostituiti": self.sostituiti_di(token) if token and self.stato == "in_corso" else [],
             "id": self.id, "nome": self.nome, "variante": self.variante, "margherita": self.margherita,
             "squadre": list(self.squadre), "timer": self.timer_attivo,
             "timer_scambio": self.secondi_timer("scambio"), "timer_giocata": self.secondi_timer("giocata"),
@@ -133,6 +156,9 @@ class Tavolo:
         self.stato = "in_corso"
         self.ack = set()
         self.terminata_da = None
+        self.attesa = {}
+        self.disconnesso_da = {}
+        self.ultimo_controllo = None
         self.logger = GameLogger(self.m.cartella_log, self.nome, rules.descrizione(), self.nomi(), self.squadre)
         self.logger.nota(f"Seed: {seed}")
         giocatori = [{"nome": p["nome"], "bot": p["tipo"] == "bot", "posto": NOMI_POSTI[s],
@@ -156,6 +182,127 @@ class Tavolo:
             raise ValueError("Partita in corso")
         self.stato = "lobby"
         self.st = None
+        # i bot che sostituivano un giocatore restano come bot normali
+        for s, p in enumerate(self.posti):
+            if p and p.get("sostituisce"):
+                self.posti[s] = {"tipo": "bot", "nome": NOMI_BOT[s], "avatar": AVATAR_BOT}
+
+    # ------------------------------------------------------------------ sostituzioni (uscita, inattività)
+    def sostituisci(self, token, motivo):
+        """Mette un bot al posto di ``token`` (tutti i suoi posti). Restituisce gli eventi."""
+        events = []
+        for s in self.posti_di(token):
+            p = self.posti[s]
+            self.posti[s] = {"tipo": "bot", "nome": f"{p['nome']} (bot)"[:30], "avatar": AVATAR_BOT,
+                             "sostituisce": {"token": token, "nome": p["nome"], "avatar": p.get("avatar")}}
+            self.agents[s] = HeuristicAgent(seed=random.randrange(1 << 30))
+            events.append(ev("sostituito", seat=s, nome=p["nome"], motivo=motivo))
+        self.ack.discard(token)
+        self.attesa.pop(token, None)
+        self.disconnesso_da.pop(token, None)
+        return events
+
+    async def applica_sostituzione(self, token, motivo):
+        """Sostituisce ``token`` con un bot e avvisa tutti; se non resta nessun umano la partita è interrotta."""
+        events = self.sostituisci(token, motivo)
+        if not events:
+            return
+        if not self.tokens_umani():
+            if self.logger:
+                self.logger.scrivi(events)
+            self.termina(motivo="interrotta")
+            if self.logger:
+                self.logger.nota("(nessun giocatore rimasto al tavolo)")
+        else:
+            await self.gestisci_eventi(events)
+        await self.m.invia(token, {"type": "sostituito", "tavolo": self.id, "motivo": motivo,
+                                   "interrotta": self.stato != "in_corso"})
+        await self.m.invia(token, {"type": "tavolo", "tavolo": self.info(token)})
+        await self.m.invia_lobby()
+        self.sveglia()
+
+    async def esci(self, token):
+        """Il giocatore lascia la partita: al suo posto gioca un bot (può rientrare più tardi)."""
+        async with self.lock:
+            if self.stato != "in_corso":
+                raise ValueError("Nessuna partita in corso")
+            if not self.posti_di(token):
+                raise ValueError("Non sei seduto a questo tavolo")
+            await self.applica_sostituzione(token, "uscito")
+
+    async def riprendi(self, token):
+        """Chi era stato sostituito da un bot riprende i suoi posti (con le carte che ha il bot)."""
+        async with self.lock:
+            if self.stato != "in_corso":
+                raise ValueError("La partita è finita")
+            posti = self.sostituiti_di(token)
+            if not posti:
+                raise ValueError("Non hai posti da riprendere a questo tavolo")
+            events = []
+            for s in posti:
+                vecchio = self.posti[s]["sostituisce"]
+                self.posti[s] = {"tipo": "umano", "token": token, "nome": vecchio["nome"], "avatar": vecchio["avatar"]}
+                self.agents.pop(s, None)
+                events.append(ev("rientrato", seat=s, nome=vecchio["nome"]))
+            self.attesa[token] = 0.0
+            await self.m.invia(token, {"type": "tavolo", "tavolo": self.info(token)})
+            await self.gestisci_eventi(events)
+        self.sveglia()
+
+    def tokens_attesi(self):
+        """Giocatori umani da cui la partita sta aspettando una mossa (o il "Continua" di fine Mano)."""
+        st = self.st
+        if self.stato != "in_corso" or not st or self.in_pausa:
+            return set()
+        if st.fase == FASE_FINE_MANO:
+            return self.tokens_umani() - self.ack
+        out = set()
+        for s in required_actors(st):
+            p = self.posti[s]
+            if p and p["tipo"] == "umano" and any(a.tipo != "attendi" for a in legal_actions(st, s)):
+                out.add(p["token"])
+        return out
+
+    def attivo(self, token):
+        """Il giocatore ha fatto qualcosa: si azzera il suo tempo di inattività."""
+        if token in self.attesa:
+            self.attesa[token] = 0.0
+
+    def da_sostituire(self, ora, limite):
+        """Giocatori da sostituire per inattività: (token, motivo). Aggiorna i contatori.
+
+        Si sostituisce solo se c'è almeno un altro giocatore umano connesso che sta aspettando:
+        da soli contro i bot (o tutti disconnessi) la partita aspetta, come prima."""
+        dt = 0.0 if self.ultimo_controllo is None else min(max(0.0, ora - self.ultimo_controllo), 30.0)
+        self.ultimo_controllo = ora
+        if self.stato != "in_corso" or not self.st:
+            self.attesa.clear()
+            self.disconnesso_da.clear()
+            return []
+        umani = self.tokens_umani()
+        connessi = {t for t in umani if self.m.connesso(t)}
+        for t in list(self.attesa):
+            if t not in umani:
+                del self.attesa[t]
+        for t in list(self.disconnesso_da):
+            if t not in umani or t in connessi:
+                del self.disconnesso_da[t]
+        attesi = self.tokens_attesi()
+        out = []
+        for t in sorted(umani):
+            altri = bool(connessi - {t})
+            if t not in connessi:
+                da = self.disconnesso_da.setdefault(t, ora)
+                if limite and altri and ora - da >= limite:
+                    out.append((t, "disconnesso"))
+                continue
+            if t in attesi:
+                self.attesa[t] = self.attesa.get(t, 0.0) + dt
+            else:
+                self.attesa.setdefault(t, 0.0)
+            if limite and altri and self.attesa[t] >= limite:
+                out.append((t, "inattivo"))
+        return out
 
     # ------------------------------------------------------------------ messaggi
     def _legali_dettaglio(self, s):
@@ -368,6 +515,7 @@ class Tavolo:
                 raise ValueError("Partita in pausa: in attesa di riconnessione")
             if posto not in self.posti_di(token):
                 raise ValueError("Non controlli questo posto")
+            self.attivo(token)
             ad = dict(ad)
             ad["seat"] = posto
             a = Action.from_dict(ad)
@@ -393,6 +541,7 @@ class Tavolo:
             raise ValueError("Non controlli questo posto")
         if not isinstance(indice, int) or not 0 <= indice < len(FRASI):
             raise ValueError("Frase sconosciuta")
+        self.attivo(token)
         if self.st.fase == FASE_SCAMBIO:
             raise ValueError("Durante lo scambio non si può parlare")
         ora = time.monotonic()
@@ -410,6 +559,7 @@ class Tavolo:
             return
         if posto not in self.posti_di(token):
             raise ValueError("Non controlli questo posto")
+        self.attivo(token)
         precedente = (posto + 3) % 4
         if self.st.corrente != precedente:
             return  # il turno è appena passato: si ignora senza errori
@@ -423,6 +573,7 @@ class Tavolo:
         async with self.lock:
             if not self.st or self.st.fase != FASE_FINE_MANO:
                 return
+            self.attivo(token)
             self.ack.add(token)
         self.sveglia()
         await self.invia_tutto()
@@ -482,6 +633,8 @@ class Tavolo:
                 async with self.lock:
                     if self.stato != "in_corso" or self.in_pausa:
                         return
+                    if s not in self.agents:
+                        continue    # il giocatore ha ripreso il suo posto
                     legal = legal_actions(self.st, s)
                     if not legal:
                         continue
@@ -545,7 +698,12 @@ class Manager:
         await ws.send_json({"type": "benvenuto", "token": token, "nome": self.nomi.get(token),
                             "avatar": self.avatar.get(token)})
         await ws.send_json(self.lobby_msg(token))
+        for t in self.tavoli.values():
+            if t.stato == "in_corso" and t.sostituiti_di(token):
+                await self.invia(token, {"type": "tavolo", "tavolo": t.info(token)})
         for t in self.tavoli_di(token):
+            t.disconnesso_da.pop(token, None)
+            t.attivo(token)
             await self.invia(token, {"type": "tavolo", "tavolo": t.info(token)})
             if t.st:
                 t.aggiorna_timer()
@@ -563,6 +721,8 @@ class Manager:
                     if token in t.spettatori:
                         t.smetti(token)
         for t in self.tavoli_di(token):
+            if t.stato == "in_corso" and not self.connesso(token):
+                t.disconnesso_da.setdefault(token, time.monotonic())
             if t.st:
                 t.aggiorna_timer()   # in pausa il timer si ferma; riparte da capo alla ripresa
                 await t.invia_tutto()
@@ -608,6 +768,29 @@ class Manager:
         if eliminati or terminati:
             await self.invia_lobby()
         return eliminati, terminati
+
+    async def inattivita(self, ora=None):
+        """Sostituisce con un bot chi è inattivo (o disconnesso) da `inattivita_min` minuti mentre
+        altri giocatori aspettano. Restituisce l'elenco (tavolo, token, motivo)."""
+        ora = time.monotonic() if ora is None else ora
+        limite = self.config.inattivita_min * 60
+        fatti = []
+        for t in list(self.tavoli.values()):
+            for token, motivo in t.da_sostituire(ora, limite):
+                async with t.lock:
+                    if t.stato != "in_corso" or not t.posti_di(token):
+                        continue
+                    await t.applica_sostituzione(token, motivo)
+                fatti.append((t.id, token, motivo))
+        return fatti
+
+    async def ciclo_inattivita(self, intervallo=5.0):
+        while True:
+            await asyncio.sleep(intervallo)
+            try:
+                await self.inattivita()
+            except Exception as ex:  # pragma: no cover - il controllo non deve mai fermare il server
+                print(f"Errore nel controllo dell'inattività: {ex!r}")
 
     async def ciclo_pulizia(self, intervallo=60.0):
         while True:
@@ -664,8 +847,10 @@ class Manager:
                 await tav.invia_tutto(token)
             return
         if tipo == "imposta":
+            if not tav.puo_gestire(token):
+                raise ValueError("Solo chi ha creato il tavolo o chi è seduto può cambiare le impostazioni")
             if tav.stato == "in_corso":
-                raise ValueError("Partita in corso")
+                raise ValueError("Partita in corso: terminala per cambiare le impostazioni")
             if msg.get("variante") in VARIANTI:
                 tav.variante = msg["variante"]
             if "margherita" in msg:
@@ -727,6 +912,12 @@ class Manager:
         elif tipo == "prosegui":
             await tav.prosegui(token)
             return
+        elif tipo == "esci":
+            await tav.esci(token)
+            return
+        elif tipo == "riprendi":
+            await tav.riprendi(token)
+            return
         elif tipo == "termina":
             if token != tav.owner and token not in tav.tokens_umani():
                 raise ValueError("Solo chi è seduto al tavolo può terminare la partita")
@@ -735,10 +926,12 @@ class Manager:
             tav.termina(da=self.nome_di(token))
             await tav.invia_tutto()
         elif tipo == "elimina":
-            if token != tav.owner:
-                raise ValueError("Solo chi ha creato il tavolo può eliminarlo")
+            if not tav.puo_eliminare(token):
+                raise ValueError("Solo chi ha creato il tavolo o chi è seduto può eliminarlo")
             if tav.stato == "in_corso":
-                tav.termina()
+                tav.termina(da=self.nome_di(token))
+                await tav.invia_tutto()      # chi sta giocando vede "Partita interrotta"
+            tav.spettatori.clear()
             del self.tavoli[tav.id]
             await self.invia_lobby()
             return
