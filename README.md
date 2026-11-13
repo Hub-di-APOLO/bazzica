@@ -331,6 +331,11 @@ Qualche regola di fair play del campionato online:
   mentre gli altri lo aspettano, viene sostituito da un bot. Lo stesso succede con "Esci dalla partita". Chi è
   stato sostituito può **riprendere il posto** finché la partita è in corso.
 - **Account**: si gioca con il proprio account (per entrare nella classifica eLE) oppure come ospite.
+- **La scheda del campione**: ogni atleta con account ha una scheda pubblica con tutta la carriera. Ci sono
+  partite, vittorie, serie di vittorie e abbandoni (il pubblico non dimentica). Ci sono le giocate spettacolari:
+  Scope, Piccole, Grandi, Bazziche per tipo, Bazziche fatte fare al compagno, assist, Napoleoni, "Che Palo!".
+  Ci sono le carte prese, compreso il conto dei 2 di denari subiti. E ci sono il compagno preferito, la bestia
+  nera e la vittima preferita. Si apre toccando il nome nella Classifica, oppure il proprio nome nella lobby.
 
 Tutti i dettagli su come si gioca, i pulsanti e le opzioni sono in [`ISTRUZIONI.md`](ISTRUZIONI.md).
 

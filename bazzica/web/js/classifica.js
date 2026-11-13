@@ -1,5 +1,6 @@
 // Pagina "Classifica": eLE dei giocatori con account e grafico dell'andamento (SVG, senza librerie).
 import { el, $, apiGet, testoEle } from "./util.js";
+import { apriScheda } from "./giocatore.js";
 
 const COLORI = ["#e4572e", "#2e86ab", "#3bb273", "#f3a712", "#8e44ad", "#d81e5b", "#16a085", "#7f8c8d",
   "#c0392b", "#2c3e50", "#a3cb38", "#fd7272"];
@@ -18,7 +19,7 @@ function coloreDi(nome) {
   return COLORI[h % COLORI.length];
 }
 
-export async function mostraClassifica() {
+export async function mostraClassifica(app) {
   const box = $("#classifica-contenuto");
   box.innerHTML = "Caricamento…";
   let d;
@@ -37,14 +38,16 @@ export async function mostraClassifica() {
   for (const g of giocatori) {
     const haGiocato = g.partite > 0;
     if (haGiocato) pos += 1;
-    tab.append(el("tr", { class: haGiocato ? "" : "senza-partite" },
+    tab.append(el("tr", { class: "cliccabile" + (haGiocato ? "" : " senza-partite"), title: "Apri la scheda",
+      onclick: () => apriScheda(app, g.nome, "classifica") },
       el("td", {}, haGiocato ? pos : "–"),
       el("td", { class: "cl-nome" }, el("span", { class: "pallino", style: `background:${colore.get(g.nome)}` }), `${g.avatar || "🙂"} ${g.nome}`),
       el("td", { class: "cl-ele" }, testoEle(g)),
       el("td", {}, g.partite), el("td", {}, g.vittorie), el("td", {}, g.pareggi), el("td", {}, g.sconfitte)));
   }
   box.append(tab);
-  box.append(el("p", { class: "nota" }, "Il \"?\" indica i giocatori nelle prime 15 partite valutate (eLE provvisorio). " +
+  box.append(el("p", { class: "nota" }, "Tocca un giocatore per aprire la sua scheda con tutte le statistiche. " +
+    "Il \"?\" indica i giocatori nelle prime 15 partite valutate (eLE provvisorio). " +
     "V/P/S = vittorie, pareggi, sconfitte. Regole complete dell'eLE nel regolamento."));
   const conPartite = giocatori.filter((g) => g.andamento.length);
   if (conPartite.length) {

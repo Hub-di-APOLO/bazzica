@@ -173,6 +173,36 @@ class Tavolo:
         sq = [(valori[0] + valori[2]) / 2, (valori[1] + valori[3]) / 2]
         return {"ele_squadre": [round(x) for x in sq], "probabilita": round(ELE.atteso(sq[0], sq[1]), 3)}
 
+    def salva_statistiche(self, vincitore, punteggi):
+        """Scheda dei giocatori: una riga per ogni account seduto (anche sostituito da un bot)."""
+        if not self.raccoglitore:
+            return
+        stat = self.raccoglitore.posti
+        account = []
+        for p in self.posti:
+            sost = p.get("sostituisce")
+            account.append(sost["account_id"] if sost else p.get("account_id"))
+        righe = []
+        for s, aid in enumerate(account):
+            if not aid:
+                continue
+            t = s % 2
+            abbandono = bool(self.posti[s].get("sostituisce"))
+            if abbandono:
+                esito = "sconfitta"
+            elif vincitore == "pari":
+                esito = "pareggio"
+            else:
+                esito = "vittoria" if vincitore == t else "sconfitta"
+            righe.append({"account_id": aid, "posto": s, "esito": esito, "abbandono": abbandono,
+                          "punti_squadra": punteggi[t], "punti_avversari": punteggi[1 - t],
+                          "punti_individuali": ELE.punti_individuali(stat[s], stat[(s + 2) % 4]),
+                          "compagno_id": account[(s + 2) % 4],
+                          "avversari": [a for a in (account[(s + 1) % 4], account[(s + 3) % 4]) if a],
+                          "stat": stat[s]})
+        if righe:
+            self.m.storico.registra_statistiche(self.partita_id, righe)
+
     def valuta_fine(self, vincitore, punteggi):
         """Aggiorna l'eLE a fine partita; restituisce l'evento pubblico ``ele`` (o None)."""
         if not self.valutata or not self.raccoglitore:
@@ -249,7 +279,8 @@ class Tavolo:
         self.disconnesso_da = {}
         self.ultimo_controllo = None
         self.valutata, _ = self.valutazione()
-        self.raccoglitore = ELE.Raccoglitore(rules) if self.valutata else None
+        # statistiche per posto: servono all'eLE (se valutata) e alla scheda dei giocatori con account
+        self.raccoglitore = ELE.Raccoglitore(rules)
         self.esito_ele = None
         self.logger = GameLogger(self.m.cartella_log, self.nome, rules.descrizione(), self.nomi(), self.squadre)
         self.logger.nota(f"Seed: {seed}")
@@ -655,6 +686,11 @@ class Tavolo:
                         self.logger.nota(f"ERRORE nel calcolo dell'eLE: {ex!r}")
                 if ev_ele:
                     extra.append(ev_ele)
+                try:
+                    self.salva_statistiche(v, e["punteggi"])
+                except Exception as ex:  # pragma: no cover - le statistiche non devono bloccare la partita
+                    if self.logger:
+                        self.logger.nota(f"ERRORE nel salvataggio delle statistiche: {ex!r}")
         events = list(events) + extra
         if self.logger:
             self.logger.scrivi(events)

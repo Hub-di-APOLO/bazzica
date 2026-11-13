@@ -7,6 +7,7 @@ import { initLobby, renderLobby, renderStanza } from "./lobby.js";
 import { mostraStorico } from "./storico.js";
 import { mostraClassifica } from "./classifica.js";
 import { initAccesso, aggiornaAccount, aggiornaBarra } from "./account.js";
+import { initScheda, apriScheda } from "./giocatore.js";
 import { Partita } from "./game.js";
 
 class App {
@@ -29,6 +30,7 @@ class App {
     impostaFileSuoni(d.suoni);
     initLobby(this);
     initAccesso(this);
+    initScheda(this);
     this.bind();
     // si entra con l'account salvato, come ospite (se scelto) oppure dalla schermata di accesso;
     // la connessione parte subito, così il codice d'accesso si chiede per primo
@@ -97,7 +99,9 @@ class App {
     });
     $("#btn-storico").addEventListener("click", () => { this.mostra("storico"); mostraStorico(); });
     $("#btn-storico-esci").addEventListener("click", () => this.mostra("lobby"));
-    $("#btn-classifica").addEventListener("click", () => { this.mostra("classifica"); mostraClassifica(); });
+    $("#btn-classifica").addEventListener("click", () => { this.mostra("classifica"); mostraClassifica(this); });
+    // toccando il proprio nome nella lobby si apre la propria scheda
+    $("#lobby-nome").addEventListener("click", () => { if (this.account) apriScheda(this, this.account.nome, "lobby"); });
     $("#btn-classifica-esci").addEventListener("click", () => this.mostra("lobby"));
     const muto = $("#btn-muto");
     const aggiornaMuto = () => { muto.innerHTML = isMuto() ? "&#128263;" : "&#128266;"; };

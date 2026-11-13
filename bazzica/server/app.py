@@ -214,6 +214,16 @@ def create_app(manager: Manager | None = None, config: Config | None = None) -> 
         verifica_codice(request)
         return m.storico.classifica()
 
+    @app.get("/api/giocatore/{nome}")
+    async def api_giocatore(nome: str, request: Request):
+        """Scheda pubblica di un giocatore con account (statistiche di tutte le partite o solo valutate)."""
+        verifica_codice(request)
+        solo = request.query_params.get("valutate") in ("1", "true", "si")
+        d = await asyncio.to_thread(m.storico.scheda, normalizza_nome(nome)[:40], solo)
+        if not d:
+            raise HTTPException(404, "Giocatore inesistente")
+        return d
+
     @app.get("/api/storico")
     async def api_storico(request: Request):
         verifica_codice(request)

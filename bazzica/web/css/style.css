@@ -876,3 +876,35 @@ body[data-schermo="gioco"] .sfondo-scienziati img { opacity: .8; width: clamp(64
   #scr-lobby .barra .btn { padding: 6px 10px; font-size: 14px; }
   #scr-lobby .barra #lobby-nome { flex-basis: 100%; order: 3; text-align: center; }
 }
+
+/* ===================== Scheda del giocatore ===================== */
+#lobby-nome.cliccabile { cursor: pointer; }
+.tab-classifica tr.cliccabile { cursor: pointer; }
+.tab-classifica tr.cliccabile:hover { background: #f6eedb; }
+.scheda { margin: 0 16px 16px; overflow: auto; }
+.scheda-testa { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 8px; }
+.scheda-avatar { font-size: 44px; width: 64px; height: 64px; display: grid; place-items: center; border-radius: 50%;
+  background: #fff3c4; border: 3px solid var(--outline); }
+.scheda-nome { font-size: 24px; font-weight: 800; }
+.scheda-ele { font-weight: 800; color: var(--outline); }
+.scheda-ele small { font-weight: 600; color: var(--muted); }
+.filtro-scheda { display: flex; gap: 6px; margin-left: auto; flex-wrap: wrap; }
+.scheda-sezione h3 { margin: 16px 0 8px; }
+.tessere { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.tessera { background: #fffdf5; border: 3px solid var(--outline); border-radius: 14px; padding: 8px 10px; box-shadow: 0 3px 0 var(--outline); }
+.tessera-valore { font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.tessera-valore.piccolo { font-size: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tessera-etichetta { font-weight: 700; font-size: 13px; }
+.tessera-nota { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.bilanci { margin-top: 8px; }
+.bilanci summary { cursor: pointer; font-weight: 700; }
+.bilanci table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 6px; }
+.bilanci th, .bilanci td { padding: 5px 6px; border-bottom: 1px solid var(--line); text-align: center; }
+.bilanci th:first-child, .bilanci td:first-child { text-align: left; }
+@media (max-width: 600px) {
+  .tessere { grid-template-columns: repeat(2, 1fr); }
+  .tessera-valore { font-size: 22px; }
+  .filtro-scheda { margin-left: 0; width: 100%; }
+  .scheda-nome { font-size: 20px; }
+}
+.filtro-scheda .chip-legenda { --c: var(--outline); }

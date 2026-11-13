@@ -62,8 +62,15 @@ def moltiplicatore_spettacolo(punti_a: float, punti_b: float) -> float:
 
 # --------------------------------------------------------------------------- statistiche
 def statistiche_vuote() -> dict:
+    """Statistiche grezze di un posto. I primi campi servono all'eLE (con le quote divise per la carta
+    passata); quelli con ``n_`` e i successivi sono conteggi pieni per la scheda del giocatore."""
     return {"scope": 0, "piccole": 0, "grandi": 0, "carte_grande": 0, "assi": 0,
-            "bazziche": [], "napoleoni": 0}
+            "bazziche": [], "napoleoni": 0,
+            # scheda del giocatore (conteggi pieni di chi ha fatto la giocata)
+            "n_scope": 0, "n_piccole": 0, "n_grandi": 0, "n_prese": 0, "n_carte_prese": 0,
+            "n_assi_presi": 0, "n_sette_bello": 0, "n_re_bello": 0, "n_due_denari": 0,
+            "bazziche_per_tipo": {}, "bazziche_fatte_fare": 0, "assist": 0, "con_carta_compagno": 0,
+            "che_palo": 0, "passaggi_veloci": 0, "napole": 0}
 
 
 class Raccoglitore:
@@ -98,6 +105,28 @@ class Raccoglitore:
         else:
             self.posti[seat][campo] += n
 
+    def _conta_presa(self, s: int, e: dict, passata: bool):
+        """Conteggi pieni per la scheda: prese, carte prese (giocata compresa), giocate spettacolari."""
+        st = self.posti[s]
+        carte = [e["carta"]] + list(e["presa"]) if e.get("carta") else list(e["presa"])
+        st["n_prese"] += 1
+        st["n_carte_prese"] += len(carte)
+        for c in carte:
+            if c.endswith("_01"):
+                st["n_assi_presi"] += 1
+            st["n_sette_bello"] += c == "denari_07"
+            st["n_re_bello"] += c == "denari_10"
+            st["n_due_denari"] += c == "denari_02"
+        if e.get("grande"):
+            st["n_grandi"] += 1
+        elif e.get("piccola"):
+            st["n_piccole"] += 1
+        elif e.get("scopa"):
+            st["n_scope"] += 1
+        if passata and (e.get("grande") or e.get("piccola") or e.get("scopa") or e.get("assi")):
+            st["con_carta_compagno"] += 1
+            self.posti[(s + 2) % 4]["assist"] += 1
+
     def _condivisa(self, seat: int, scope: int) -> bool:
         if self._ricevuta[seat] is None or self._distribuite[seat] is None or self.rules is None:
             return False
@@ -125,8 +154,11 @@ class Raccoglitore:
         elif tipo == "bazzica":
             s = e["seat"]
             b = {"scope": int(e["scope"]), "riscosse": int(e.get("girate", 0))}
+            per_tipo = self.posti[s]["bazziche_per_tipo"]
+            per_tipo[str(b["scope"])] = per_tipo.get(str(b["scope"]), 0) + 1
             if self._condivisa(s, b["scope"]):
                 b["condivisa"] = True
+                self.posti[(s + 2) % 4]["bazziche_fatte_fare"] += 1
             self.posti[s]["bazziche"].append(b)
             if b["riscosse"] < b["scope"]:
                 self._coda[s % 2].append(b)
@@ -135,6 +167,7 @@ class Raccoglitore:
                 return
             s = e["seat"]
             passata = self._ricevuta[s] is not None and e.get("carta") == self._ricevuta[s]
+            self._conta_presa(s, e, passata)
             if e.get("grande"):
                 self._aggiungi(s, "grandi", 1, passata)
                 self._aggiungi(s, "carte_grande", sum(1 for g in e.get("girate", []) if g[1] == "grande"), passata)
@@ -146,6 +179,11 @@ class Raccoglitore:
                 self._aggiungi(s, "assi", len(e["assi"]), passata)
             if e.get("credito_pagato"):
                 self._paga(e["squadra"], int(e["credito_pagato"]))
+        elif tipo == "che_palo":
+            self.posti[e["seat"]]["che_palo"] += 1
+        elif tipo == "scambio":
+            if e.get("veloce"):
+                self.posti[e["seat"]]["passaggi_veloci"] += 1
         elif tipo == "carte_residue":
             if e.get("credito_pagato"):
                 self._paga(e["squadra"], int(e["credito_pagato"]))
@@ -155,6 +193,9 @@ class Raccoglitore:
                 if sq.get("napola_nome") == "Napoleone":
                     self.posti[t]["napoleoni"] += 1
                     self.posti[t + 2]["napoleoni"] += 1
+                elif sq.get("napola_nome"):
+                    self.posti[t]["napole"] += 1
+                    self.posti[t + 2]["napole"] += 1
 
 
 def statistiche_da_eventi(eventi, rules=None) -> list:

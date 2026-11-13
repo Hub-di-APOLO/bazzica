@@ -86,7 +86,30 @@ CREATE TABLE IF NOT EXISTS ele_partite (
 CREATE INDEX IF NOT EXISTS ele_partite_account ON ele_partite(account_id);
 CREATE INDEX IF NOT EXISTS sessioni_account ON sessioni(account_id);
 """
-VERSIONE_SCHEMA = 1
+# versione 2: statistiche per account di ogni partita conclusa (scheda del giocatore)
+SCHEMA_STATISTICHE = """
+CREATE TABLE IF NOT EXISTS statistiche_partite (
+    partita_id INTEGER NOT NULL REFERENCES partite(id),
+    account_id INTEGER NOT NULL REFERENCES account(id),
+    posto INTEGER NOT NULL,
+    fine TEXT NOT NULL,
+    variante TEXT,
+    margherita INTEGER,
+    valutata INTEGER NOT NULL DEFAULT 0,
+    esito TEXT NOT NULL,             -- 'vittoria', 'sconfitta' o 'pareggio' (chi abbandona: sconfitta)
+    abbandono INTEGER NOT NULL DEFAULT 0,
+    punti_squadra INTEGER,
+    punti_avversari INTEGER,
+    punti_individuali REAL,
+    compagno_id INTEGER,             -- account del compagno (NULL se bot od ospite)
+    avversari TEXT,                  -- JSON: account degli avversari
+    stat TEXT,                       -- JSON: statistiche grezze del posto
+    PRIMARY KEY (partita_id, account_id, posto)
+);
+CREATE INDEX IF NOT EXISTS statistiche_account ON statistiche_partite(account_id);
+"""
+VERSIONE_SCHEMA = 2
+MIN_PARTITE_CONFRONTO = 3   # partite minime insieme per "compagno preferito", "bestia nera", "vittima"
 
 
 class Storico:
@@ -111,6 +134,9 @@ class Storico:
                 # le partite giocate prima dell'eLE non sono valutate
                 c.execute("ALTER TABLE partite ADD COLUMN valutata INTEGER NOT NULL DEFAULT 0")
             c.executescript(SCHEMA_ELE)
+        if versione < 2:
+            c.executescript(SCHEMA_STATISTICHE)
+        if versione < VERSIONE_SCHEMA:
             c.execute(f"PRAGMA user_version = {VERSIONE_SCHEMA}")
 
     def _conn(self):
@@ -275,3 +301,125 @@ class Storico:
             d["dettaglio"] = json.loads(d["dettaglio"] or "{}")
             out.append(d)
         return out
+
+    # ------------------------------------------------------------------ statistiche dei giocatori
+    def registra_statistiche(self, partita_id, righe):
+        """Una riga per account seduto a una partita conclusa (vedi ``SCHEMA_STATISTICHE``)."""
+        fine = dt.datetime.now().isoformat(timespec="seconds")
+        with self.lock, self._conn() as c:
+            p = c.execute("SELECT variante, margherita, valutata FROM partite WHERE id=?", (partita_id,)).fetchone()
+            for r in righe:
+                c.execute(
+                    "INSERT OR REPLACE INTO statistiche_partite (partita_id, account_id, posto, fine, variante, margherita,"
+                    " valutata, esito, abbandono, punti_squadra, punti_avversari, punti_individuali, compagno_id,"
+                    " avversari, stat) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (partita_id, r["account_id"], r["posto"], fine, p["variante"] if p else None,
+                     p["margherita"] if p else 0, p["valutata"] if p else 0, r["esito"], int(r["abbandono"]),
+                     r["punti_squadra"], r["punti_avversari"], r["punti_individuali"], r.get("compagno_id"),
+                     json.dumps(r.get("avversari", [])), json.dumps(r["stat"], ensure_ascii=False)))
+
+    def scheda(self, nome_norm: str, solo_valutate: bool = False):
+        """Scheda del giocatore: carriera, giocate spettacolari, carte prese, compagni e rivali."""
+        with self._conn() as c:
+            a = c.execute("SELECT a.id, a.nome, a.avatar, e.ele, e.partite FROM account a LEFT JOIN ele e "
+                          "ON e.account_id=a.id WHERE a.nome_norm=?", (nome_norm,)).fetchone()
+            if not a:
+                return None
+            filtro = " AND valutata=1" if solo_valutate else ""
+            righe = [dict(r) for r in c.execute(
+                f"SELECT * FROM statistiche_partite WHERE account_id=?{filtro} ORDER BY fine, partita_id",
+                (a["id"],)).fetchall()]
+            ele_max = c.execute("SELECT MAX(ele_dopo) FROM ele_partite WHERE account_id=?", (a["id"],)).fetchone()[0]
+            nomi = {r["id"]: r["nome"] for r in c.execute("SELECT id, nome FROM account").fetchall()}
+        for r in righe:
+            r["stat"] = json.loads(r["stat"] or "{}")
+            r["avversari"] = json.loads(r["avversari"] or "[]")
+        return {
+            "nome": a["nome"], "avatar": a["avatar"], "solo_valutate": solo_valutate,
+            "ele": round(a["ele"] if a["ele"] is not None else E.ELE_INIZIALE),
+            "provvisorio": E.provvisorio(a["partite"] or 0),
+            "ele_massimo": round(max(ele_max or E.ELE_INIZIALE, E.ELE_INIZIALE)),
+            "carriera": _carriera(righe),
+            "spettacolo": _spettacolo(righe),
+            "carte": _carte(righe),
+            "compagni_rivali": _compagni_rivali(righe, nomi),
+        }
+
+
+def _somma(righe, chiave):
+    return sum(r["stat"].get(chiave, 0) for r in righe)
+
+
+def _carriera(righe):
+    n = len(righe)
+    esiti = [r["esito"] for r in righe]
+    serie = migliore = 0
+    for e in esiti:
+        serie = serie + 1 if e == "vittoria" else 0
+        migliore = max(migliore, serie)
+    varianti = {}
+    for r in righe:
+        v = (r["variante"] or "?") + (" + Margherita Hack" if r["margherita"] else "")
+        varianti[v] = varianti.get(v, 0) + 1
+    vittorie = esiti.count("vittoria")
+    return {"partite": n, "vittorie": vittorie, "pareggi": esiti.count("pareggio"),
+            "sconfitte": esiti.count("sconfitta"),
+            "percentuale_vittorie": round(100 * vittorie / n) if n else 0,
+            "serie_vittorie": migliore, "abbandoni": sum(r["abbandono"] for r in righe),
+            "valutate": sum(r["valutata"] for r in righe),
+            "varianti": sorted(({"variante": k, "partite": v} for k, v in varianti.items()),
+                               key=lambda x: -x["partite"])[:3]}
+
+
+def _spettacolo(righe):
+    per_tipo = {}
+    intere = 0
+    for r in righe:
+        for k, v in r["stat"].get("bazziche_per_tipo", {}).items():
+            per_tipo[k] = per_tipo.get(k, 0) + v
+        intere += sum(1 for b in r["stat"].get("bazziche", []) if b["riscosse"] >= b["scope"])
+    return {"scope": _somma(righe, "n_scope"), "piccole": _somma(righe, "n_piccole"),
+            "grandi": _somma(righe, "n_grandi"), "bazziche": sum(per_tipo.values()),
+            "bazziche_per_tipo": {k: per_tipo.get(k, 0) for k in ("2", "3", "5", "7")},
+            "bazziche_riscosse_intere": intere, "bazziche_fatte_fare": _somma(righe, "bazziche_fatte_fare"),
+            "assist": _somma(righe, "assist"), "con_carta_compagno": _somma(righe, "con_carta_compagno"),
+            "napoleoni": _somma(righe, "napoleoni"), "napole": _somma(righe, "napole"),
+            "che_palo": _somma(righe, "che_palo"), "passaggi_veloci": _somma(righe, "passaggi_veloci")}
+
+
+def _carte(righe):
+    n = len(righe)
+    punti = sum(r["punti_individuali"] or 0 for r in righe)
+    return {"assi": _somma(righe, "n_assi_presi"), "sette_bello": _somma(righe, "n_sette_bello"),
+            "re_bello": _somma(righe, "n_re_bello"), "due_denari": _somma(righe, "n_due_denari"),
+            "prese": _somma(righe, "n_prese"), "carte_prese": _somma(righe, "n_carte_prese"),
+            "media_punti_individuali": round(punti / n, 1) if n else 0}
+
+
+def _compagni_rivali(righe, nomi):
+    def bilanci(coppie):
+        out = {}
+        for aid, esito in coppie:
+            b = out.setdefault(aid, {"nome": nomi.get(aid, "?"), "partite": 0, "vittorie": 0, "pareggi": 0,
+                                     "sconfitte": 0})
+            b["partite"] += 1
+            b[{"vittoria": "vittorie", "pareggio": "pareggi", "sconfitta": "sconfitte"}[esito]] += 1
+        for b in out.values():
+            b["percentuale_vittorie"] = round(100 * b["vittorie"] / b["partite"])
+        return sorted(out.values(), key=lambda b: (-b["partite"], b["nome"].casefold()))
+
+    compagni = bilanci((r["compagno_id"], r["esito"]) for r in righe if r["compagno_id"])
+    avversari = bilanci((a, r["esito"]) for r in righe for a in r["avversari"])
+    abbastanza = lambda lista: [b for b in lista if b["partite"] >= MIN_PARTITE_CONFRONTO]  # noqa: E731
+    comp, avv = abbastanza(compagni), abbastanza(avversari)
+    return {
+        "minimo_partite": MIN_PARTITE_CONFRONTO,
+        "compagno_preferito": max(comp, key=lambda b: (b["percentuale_vittorie"], b["partite"]), default=None),
+        # bestia nera: contro chi si perde di più (sotto il 50%); vittima: contro chi si vince di più (sopra il 50%)
+        "bestia_nera": min((b for b in avv if b["percentuale_vittorie"] < 50),
+                           key=lambda b: (b["percentuale_vittorie"], -b["partite"]), default=None),
+        "vittima_preferita": max((b for b in avv if b["percentuale_vittorie"] > 50),
+                                 key=lambda b: (b["percentuale_vittorie"], b["partite"]), default=None),
+        "compagni": compagni[:10],
+        "avversari": avversari[:10],
+    }

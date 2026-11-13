@@ -83,7 +83,10 @@ export async function aggiornaAccount(app) {
 /** Nome, eLE e pulsanti nella barra della lobby. */
 export function aggiornaBarra(app) {
   const a = app.account;
-  $("#lobby-nome").textContent = a ? `${app.avatar} ${a.nome} · eLE ${testoEle(a)}` : `${app.avatar} ${app.nome} (ospite)`;
+  const chip = $("#lobby-nome");
+  chip.textContent = a ? `${app.avatar} ${a.nome} · eLE ${testoEle(a)} ›` : `${app.avatar} ${app.nome} (ospite)`;
+  chip.classList.toggle("cliccabile", !!a);
+  chip.title = a ? "Apri la tua scheda" : "";
   $("#btn-account").textContent = a ? "Esci" : "Accedi";
   $("#btn-cambia-nome").textContent = a ? "Avatar" : "Cambia nome";
 }

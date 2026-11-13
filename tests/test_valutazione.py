@@ -273,8 +273,24 @@ def test_migrazione_database_vecchio(tmp_path):
     vecchie = s.elenco()
     assert len(vecchie) == 1 and vecchie[0]["tavolo"] == "Vecchio" and vecchie[0]["valutata"] == 0
     with sqlite3.connect(path) as c:
-        assert c.execute("PRAGMA user_version").fetchone()[0] == 1
+        assert c.execute("PRAGMA user_version").fetchone()[0] == 2
         tabelle = {r[0] for r in c.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-    assert {"account", "sessioni", "ele", "valutazioni", "ele_partite"} <= tabelle
+    assert {"account", "sessioni", "ele", "valutazioni", "ele_partite", "statistiche_partite"} <= tabelle
     Storico(str(path))      # una seconda apertura non rifà nulla
     assert len(Storico(str(path)).elenco()) == 1
+
+
+def test_migrazione_dalla_versione_1(tmp_path):
+    """Un database con l'eLE ma senza statistiche dei giocatori riceve solo la tabella nuova."""
+    path = tmp_path / "v1.db"
+    s = Storico(str(path))
+    with sqlite3.connect(path) as c:
+        c.execute("DROP TABLE statistiche_partite")
+        c.execute("PRAGMA user_version = 1")
+        c.execute("INSERT INTO account (nome, nome_norm, hash, sale, creato) VALUES ('Anna','anna','h','s','x')")
+    Storico(str(path))
+    with sqlite3.connect(path) as c:
+        assert c.execute("PRAGMA user_version").fetchone()[0] == 2
+        assert c.execute("SELECT COUNT(*) FROM statistiche_partite").fetchone()[0] == 0
+        assert c.execute("SELECT nome FROM account").fetchone()[0] == "Anna"
+    del s
