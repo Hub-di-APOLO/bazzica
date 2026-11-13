@@ -1,4 +1,4 @@
-"""Vettori di riferimento del PRNG condiviso (gli stessi sono verificati dai test Dart)."""
+"""Vettori di riferimento del PRNG mulberry32 (stessi valori dell'implementazione JavaScript originale)."""
 from bazzica.engine.prng import Mulberry32
 
 VETTORI = {

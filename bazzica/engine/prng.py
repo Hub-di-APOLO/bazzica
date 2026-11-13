@@ -1,9 +1,8 @@
-"""PRNG condiviso Python/Dart: mulberry32.
+"""PRNG del gioco: mulberry32.
 
 Usato per il primo mazziere, i mescolamenti e gli spareggi dei bot, così che una
-partita sia riproducibile dal solo seed in entrambi i linguaggi. L'implementazione
-Dart (``mobile/packages/bazzica_core/lib/engine/prng.dart``) deve restare identica:
-ogni operazione è su interi a 32 bit senza segno.
+partita sia riproducibile dal solo seed (il seed è scritto nel log di ogni partita).
+Ogni operazione è su interi a 32 bit senza segno.
 """
 from __future__ import annotations
 

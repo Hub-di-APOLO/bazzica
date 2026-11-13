@@ -31,15 +31,3 @@ Claude outputs/
 assets/sounds/originali/
 # Foglio sorgente con tutte le carte (13 MB), già ritagliato nei singoli PNG
 assets/cards/Carte_piacentine_al_completo.png
-
-# --- Flutter / Dart (app mobile) ---
-.dart_tool/
-.packages
-.flutter-plugins
-.flutter-plugins-dependencies
-build/
-**/android/.gradle/
-**/android/local.properties
-**/ios/Pods/
-**/ios/.symlinks/
-*.iml
