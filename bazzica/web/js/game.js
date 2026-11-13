@@ -97,7 +97,7 @@ export class Partita {
     if (msg.tavolo !== this.tid) return;
     if (msg.type === "stato" && msg.info && msg.info.stato === "in_corso" && this.vecchiaFinita()) this.nuovaPartita();
     // le esclamazioni ("Che Palo!" e frasi) compaiono subito, senza aspettare le altre animazioni
-    if (msg.type === "eventi" && msg.eventi.length && msg.eventi.every((e) => e.tipo === "frase" || e.tipo === "che_palo" || e.tipo === "striscia")) {
+    if (msg.type === "eventi" && msg.eventi.length && msg.eventi.every((e) => ["frase", "che_palo", "striscia", "frase_spettatore"].includes(e.tipo))) {
       if (msg.posto === this.view && this.app.schermo === "gioco") msg.eventi.forEach((e) => this.animaEvento(e).catch(() => {}));
       return;
     }
@@ -229,6 +229,14 @@ export class Partita {
     this.renderPalo(st);
     this.aggiornaPunti(obs);
     this.impostaTimer(info.timer, obs);
+
+    // chi sta guardando la partita
+    const spett = info.spettatori || [];
+    const badge = $("#spettatori-badge");
+    badge.classList.toggle("nascosto", !spett.length);
+    badge.textContent = `👀 ${spett.length}`;
+    badge.title = `Spettatori: ${spett.join(", ")}`;
+    badge.onclick = () => toast(`👀 Guardano: ${spett.join(", ")}`);
 
     // overlay pausa
     const ovp = $("#ov-pausa");
@@ -408,6 +416,12 @@ export class Partita {
     const { obs, legali } = st;
     const box = $("#mia-mano");
     box.innerHTML = "";
+    if (obs.pubblica && obs.mano_coperte) {
+      // spettatore di una partita con giocatori umani: le carte del giocatore in basso sono coperte
+      for (let i = 0; i < obs.mano_coperte; i++) box.append(dorso());
+      box.classList.remove("attiva");
+      return;
+    }
     if (!this.rivelato) {
       obs.mano.forEach(() => box.append(dorso()));
       box.classList.remove("attiva");
@@ -444,10 +458,12 @@ export class Partita {
 
   renderPalo(st) {
     const f = $("#btn-frasi"), u = $("#btn-ultima"), sx = $("#btn-striscia");
-    const ok = this.rivelato && !this.spettatore && st.legali.some((a) => a.tipo === "che_palo");
+    // gli spettatori hanno le frasi rapide (non "Che Palo!") e possono commentare anche durante lo scambio
+    const ok = this.spettatore ? st.info.stato === "in_corso"
+      : this.rivelato && st.legali.some((a) => a.tipo === "che_palo");
     f.classList.toggle("nascosto", !ok);
     // niente chat finché lo scambio delle carte non è finito
-    const inScambio = st.obs.fase === "scambio";
+    const inScambio = st.obs.fase === "scambio" && !this.spettatore;
     f.disabled = inScambio || !!this.inRicarica;
     f.title = inScambio ? "La chat si apre quando tutti hanno scambiato le carte" : "Che Palo! e frasi";
     if (!ok || inScambio) $("#menu-frasi").classList.add("nascosto");
@@ -477,7 +493,7 @@ export class Partita {
       this.inRicarica = false;
       f.classList.remove("ricarica");
       const st = this.stati[this.view];
-      f.disabled = !!(st && st.obs.fase === "scambio");
+      f.disabled = !!(st && st.obs.fase === "scambio" && !this.spettatore);
     }, 3000);
   }
 
@@ -500,11 +516,13 @@ export class Partita {
     const m = $("#menu-frasi");
     if (!m.classList.contains("nascosto")) { m.classList.add("nascosto"); return; }
     m.innerHTML = "";
-    m.append(el("button", { class: "btn piccolo frase-palo", onclick: () => this.esclamaPalo() }, "Che Palo!"));
+    if (!this.spettatore) m.append(el("button", { class: "btn piccolo frase-palo", onclick: () => this.esclamaPalo() }, "Che Palo!"));
     FRASI.forEach((f, i) => m.append(el("button", {
       class: "btn piccolo", onclick: () => {
         if ($("#btn-frasi").disabled) return;
-        this.app.rete.invia({ type: "frase", tavolo: this.tid, posto: this.view, indice: i });
+        // lo spettatore non ha un posto: il server riconosce la frase come commento di uno spettatore
+        this.app.rete.invia(this.spettatore ? { type: "frase", tavolo: this.tid, indice: i }
+          : { type: "frase", tavolo: this.tid, posto: this.view, indice: i });
         this.ricarica();
       },
     }, f)));
@@ -606,7 +624,9 @@ export class Partita {
     bar.innerHTML = "";
     if (!this.rivelato) return;
     if (this.spettatore) {
-      bar.append(el("span", { class: "suggerimento" }, "👀 Stai guardando una partita tra bot: si vedono tutte le carte"));
+      bar.append(el("span", { class: "suggerimento" }, obs.pubblica
+        ? "👀 Stai guardando: vedi solo le carte in tavola. Puoi commentare con la Chat"
+        : "👀 Stai guardando una partita tra bot: si vedono tutte le carte"));
       return;
     }
     const tipi = new Set(legali.map((a) => a.tipo));
@@ -724,16 +744,20 @@ export class Partita {
     riga("Totale partita", (s, t) => rie.punteggi[t], "partita");
 
     const attesa = el("p", { class: "nota", id: "attesa-ack" });
-    const btn = el("button", {
-      class: "btn primario", id: "btn-continua", onclick: () => {
-        this.ackInviato = true;
-        btn.disabled = true;
-        btn.textContent = "In attesa degli altri giocatori…";
-        this.app.rete.invia({ type: "prosegui", tavolo: this.tid });
-      },
-    }, "Continua");
     const st = this.stati[this.view];
     const fine = st && st.obs.fase === "fine_partita";
+    // il "Continua" serve ai giocatori: lo spettatore di una partita con umani chiude e basta
+    const soloChiudi = this.spettatore && st && st.obs.pubblica;
+    const btn = soloChiudi
+      ? el("button", { class: "btn primario", onclick: () => this.app.chiudiModal() }, "Chiudi")
+      : el("button", {
+        class: "btn primario", id: "btn-continua", onclick: () => {
+          this.ackInviato = true;
+          btn.disabled = true;
+          btn.textContent = "In attesa degli altri giocatori…";
+          this.app.rete.invia({ type: "prosegui", tavolo: this.tid });
+        },
+      }, "Continua");
     // a partita finita il riepilogo si apre dalla schermata finale: si torna indietro a quella
     const indietro = el("button", { class: "btn primario", onclick: () => this.mostraFinale(st.obs, st.info, false) }, "Indietro");
     // uscire dalla partita: al proprio posto continua un bot (si può riprendere il posto dopo)
@@ -905,6 +929,13 @@ export class Partita {
         this.modalInterrotta = false;
         this.modalFinale = false;
         break;
+      case "frase_spettatore": {
+        suona("palo");
+        const b = $("#spettatori-badge");
+        const r = b && !b.classList.contains("nascosto") ? b.getBoundingClientRect() : $("#tavola").getBoundingClientRect();
+        fx.fumetto(r, `👀 ${e.nome}: ${e.testo}`, "commento");
+        break;
+      }
       case "frase": {
         suona("palo");
         const g = this.avatarDi(e.seat);

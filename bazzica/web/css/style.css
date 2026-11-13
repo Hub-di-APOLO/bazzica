@@ -788,3 +788,13 @@ body[data-schermo="gioco"] .sfondo-scienziati img { opacity: .8; width: clamp(64
   .tavolo-item { flex-wrap: wrap; justify-content: flex-end; }
   .tavolo-item .ti-info { flex-basis: 100%; }
 }
+
+/* ---------- spettatori: contatore sul tavolo (i commenti escono da qui) ---------- */
+.c-asx { flex-direction: column; gap: 6px; }
+.spettatori-badge { font-family: inherit; font-weight: 800; font-size: 13px; color: var(--outline); background: #fff; border: 3px solid var(--outline);
+  border-radius: 99px; padding: 2px 8px; box-shadow: 0 2px 0 var(--outline); cursor: pointer; white-space: nowrap; }
+.fumetto.commento { transform-origin: 0 100%; white-space: normal; max-width: calc(100vw - 16px); width: max-content; font-size: 17px; background: #eef7ff;
+  animation: fumetto-commento 2.4s ease-out forwards; }
+.fumetto.commento::after { left: 18px; }
+@keyframes fumetto-commento { 0% { transform: translate(0, -100%) scale(0); } 10% { transform: translate(0, -100%) scale(1.08); }
+  16%, 85% { transform: translate(0, -100%) scale(1); opacity: 1; } 100% { transform: translate(0, -100%) scale(1); opacity: 0; } }

@@ -73,6 +73,9 @@ export function renderStanza(app, t) {
   const mh = $("#stanza-mh");
   mh.checked = t.margherita;
   mh.disabled = !puo;
+  const sp = $("#stanza-spett");
+  sp.checked = t.spettatori_ammessi !== false;
+  sp.disabled = !puo;
   for (const [id, chiave] of [["#stanza-ts", "timer_scambio"], ["#stanza-tg", "timer_giocata"]]) {
     const sel = $(id);
     const v = String(t[chiave] ?? 0);
@@ -145,6 +148,7 @@ export function initLobby(app) {
     app.rete.invia({ type: "imposta", tavolo: app.stanza, variante: ev.target.value });
   });
   $("#stanza-mh").addEventListener("change", (ev) => app.rete.invia({ type: "imposta", tavolo: app.stanza, margherita: ev.target.checked }));
+  $("#stanza-spett").addEventListener("change", (ev) => app.rete.invia({ type: "imposta", tavolo: app.stanza, spettatori: ev.target.checked }));
   $("#stanza-ts").addEventListener("change", (ev) => app.rete.invia({ type: "imposta", tavolo: app.stanza, timer_scambio: Number(ev.target.value) }));
   $("#stanza-tg").addEventListener("change", (ev) => app.rete.invia({ type: "imposta", tavolo: app.stanza, timer_giocata: Number(ev.target.value) }));
   $("#btn-guarda").addEventListener("click", () => app.guarda(app.stanza));

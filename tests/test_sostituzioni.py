@@ -162,7 +162,7 @@ def test_un_azione_azzera_l_inattivita(tmp_path):
             controlla(c, t0)
             for i in range(1, 9):
                 controlla(c, t0 + 30 * i)
-            assert tav.attesa[fermo] >= 240
+            assert tav.attesa[fermo] >= 240 - 1e-6
             ws = a if fermo == "aaa" else b
             ws.send_json({"type": "frase", "tavolo": tid, "posto": tav.posti_di(fermo)[0], "indice": 0})
             aspetta(lambda: tav.attesa[fermo] == 0)

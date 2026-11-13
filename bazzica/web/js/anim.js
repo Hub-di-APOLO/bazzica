@@ -70,11 +70,17 @@ export function scintille(x, y, n = 24, colore = null) {
   }
 }
 
-export function fumetto(rect, testo) {
-  const f = el("div", { class: "fumetto" }, testo);
+export function fumetto(rect, testo, classe = "") {
+  const f = el("div", { class: "fumetto" + (classe ? " " + classe : "") }, testo);
   const c = centro(rect);
-  f.style.left = Math.min(window.innerWidth - 120, Math.max(120, c.x)) + "px";
-  f.style.top = Math.max(70, rect.top - 6) + "px";
+  if (classe === "commento") {
+    // commento di uno spettatore: parte dal contatore a sinistra e non esce mai dallo schermo
+    f.style.left = Math.max(8, rect.left) + "px";
+    f.style.top = Math.max(70, rect.top - 6) + "px";
+  } else {
+    f.style.left = Math.min(window.innerWidth - 120, Math.max(120, c.x)) + "px";
+    f.style.top = Math.max(70, rect.top - 6) + "px";
+  }
   document.body.append(f);
   setTimeout(() => f.remove(), 2500);
 }

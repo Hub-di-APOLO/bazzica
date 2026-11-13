@@ -52,7 +52,9 @@ class Tavolo:
         self.timer_attivo = True
         self.durata_scambio = None             # secondi; None = predefinito (nessuno), 0 = nessun timer
         self.durata_giocata = None             # secondi; None = predefinito (nessuno), 0 = nessun timer
-        self.spettatori: dict = {}             # token -> ultima versione vista (partite solo-bot)
+        self.spettatori: dict = {}             # token -> ultima versione vista
+        self.spettatori_ammessi = True         # se False si possono guardare solo le partite tra soli bot
+        self.ultima_frase_spett: dict = {}     # token dello spettatore -> ora dell'ultima frase
         self.versione = 0                      # cresce a ogni gruppo di eventi
         self.timer_chiave = None
         self.timer_task: Optional[asyncio.Task] = None
@@ -86,6 +88,18 @@ class Tavolo:
     def puo_eliminare(self, token):
         return self.puo_gestire(token) or self.abbandonato()
 
+    def solo_bot(self):
+        return not self.tokens_umani()
+
+    def guardabile(self, token=None):
+        """Si può guardare: partita in corso, spettatori ammessi (sempre tra soli bot), e non ci si è seduti."""
+        if self.stato != "in_corso" or (token is not None and self.posti_di(token)):
+            return False
+        return self.solo_bot() or self.spettatori_ammessi
+
+    def nomi_spettatori(self):
+        return [self.m.nome_di(t) for t in self.spettatori if not self.posti_di(t)]
+
     def nomi(self):
         return [p["nome"] if p else "—" for p in self.posti]
 
@@ -107,8 +121,9 @@ class Tavolo:
             "id": self.id, "nome": self.nome, "variante": self.variante, "margherita": self.margherita,
             "squadre": list(self.squadre), "timer": self.timer_attivo,
             "timer_scambio": self.secondi_timer("scambio"), "timer_giocata": self.secondi_timer("giocata"),
-            "guardabile": self.stato == "in_corso" and not self.tokens_umani(),
+            "guardabile": self.guardabile(token),
             "spettatori": len(self.spettatori),
+            "spettatori_ammessi": self.spettatori_ammessi,
             "stato": self.stato, "owner_nome": self.m.nome_di(self.owner),
             "posti": [None if p is None else {"tipo": p["tipo"], "nome": p["nome"], "avatar": p.get("avatar"),
                                                "connesso": p["tipo"] == "bot" or self.m.connesso(p["token"])}
@@ -239,6 +254,7 @@ class Tavolo:
             if not posti:
                 raise ValueError("Non hai posti da riprendere a questo tavolo")
             events = []
+            self.spettatori.pop(token, None)
             for s in posti:
                 vecchio = self.posti[s]["sostituisce"]
                 self.posti[s] = {"tipo": "umano", "token": token, "nome": vecchio["nome"], "avatar": vecchio["avatar"]}
@@ -293,14 +309,14 @@ class Tavolo:
             altri = bool(connessi - {t})
             if t not in connessi:
                 da = self.disconnesso_da.setdefault(t, ora)
-                if limite and altri and ora - da >= limite:
+                if limite and altri and ora - da >= limite - 1e-6:
                     out.append((t, "disconnesso"))
                 continue
             if t in attesi:
                 self.attesa[t] = self.attesa.get(t, 0.0) + dt
             else:
                 self.attesa.setdefault(t, 0.0)
-            if limite and altri and self.attesa[t] >= limite:
+            if limite and altri and self.attesa[t] >= limite - 1e-6:     # tolleranza sugli arrotondamenti
                 out.append((t, "inattivo"))
         return out
 
@@ -349,6 +365,7 @@ class Tavolo:
             "squadre": list(self.squadre),
             "terminata_da": self.terminata_da,
             "timer": self.info_timer(),
+            "spettatori": self.nomi_spettatori(),
         }
 
     # ------------------------------------------------------------------ timer
@@ -443,26 +460,64 @@ class Tavolo:
             for s in self.posti_di(t):
                 await self.m.invia(t, self.messaggio_stato(s))
 
-    # ------------------------------------------------------------------ spettatori (solo partite tra bot)
-    def messaggio_spettatore(self):
-        """Lo spettatore di una partita tra soli bot vede tutto: le mani dei 4 bot sono scoperte."""
+    # ------------------------------------------------------------------ spettatori
+    def osservazione_pubblica(self):
+        """Quello che vede uno spettatore di una partita con giocatori umani: solo le informazioni
+        pubbliche (tavola, prese, Bazziche dichiarate, punteggi...), nessuna carta in mano."""
         st = self.st
         obs = observation(st, 0)
-        for k in obs["altri"]:
-            obs["altri"][k]["carte"] = list(st.mani[int(k)])
+        scoperta0 = st.bazzica[0] is not None          # una Bazzica dichiarata è pubblica
+        obs["mano"] = list(st.mani[0]) if scoperta0 else []
+        obs["mano_coperte"] = 0 if scoperta0 else len(st.mani[0])
+        obs["scambio"]["mia_passata"] = None
+        obs["scambio"]["ricevuta"] = None
+        obs["scambio"]["distribuite"] = []
+        obs["pubblica"] = True
+        return obs
+
+    def messaggio_spettatore(self):
+        """Partita tra soli bot: lo spettatore vede tutto (le mani dei 4 bot sono scoperte).
+        Partita con giocatori umani: solo le informazioni pubbliche."""
+        st = self.st
+        if self.solo_bot():
+            obs = observation(st, 0)
+            for k in obs["altri"]:
+                obs["altri"][k]["carte"] = list(st.mani[int(k)])
+        else:
+            obs = self.osservazione_pubblica()
         info = self.info_partita()
         info["spettatore"] = True
         return {"type": "stato", "tavolo": self.id, "posto": 0, "obs": obs, "legali": [], "info": info,
                 "spettatore": True}
 
     def guarda(self, token):
-        if self.stato != "in_corso" or self.tokens_umani():
-            raise ValueError("Si possono guardare solo le partite tra soli bot")
+        if self.stato != "in_corso":
+            raise ValueError("Nessuna partita in corso da guardare")
+        if self.posti_di(token):
+            raise ValueError("Sei seduto a questo tavolo: rientra in partita")
+        if not self.guardabile():
+            raise ValueError("A questo tavolo non sono ammessi spettatori")
         self.spettatori[token] = -1
 
     def smetti(self, token):
         self.spettatori.pop(token, None)
+        self.ultima_frase_spett.pop(token, None)
         self.sveglia()
+
+    async def frase_spettatore(self, token, indice):
+        """Frase rapida di uno spettatore: la vedono giocatori e spettatori."""
+        if self.stato != "in_corso" or token not in self.spettatori or self.posti_di(token):
+            raise ValueError("Non stai guardando questa partita")
+        if not isinstance(indice, int) or not 0 <= indice < len(FRASI):
+            raise ValueError("Frase sconosciuta")
+        ora = time.monotonic()
+        if ora - self.ultima_frase_spett.get(token, -1e9) < self.m.pausa_palo:
+            return
+        self.ultima_frase_spett[token] = ora
+        nome = self.m.nome_di(token)
+        if self.logger:
+            self.logger.nota(f"  [spettatore] {nome}: «{FRASI[indice]}»")
+        await self.invia_eventi([ev("frase_spettatore", nome=nome, testo=FRASI[indice])])
 
     def visto(self, token, versione):
         if token in self.spettatori and isinstance(versione, int):
@@ -479,9 +534,13 @@ class Tavolo:
     async def invia_eventi(self, events):
         if not events:
             return
-        for t in list(self.spettatori):
-            if not self.posti_di(t):
-                await self.m.invia(t, {"type": "eventi", "tavolo": self.id, "posto": 0, "eventi": events, "spettatore": True})
+        # con giocatori umani gli spettatori ricevono solo gli eventi pubblici (mai carte in mano)
+        pubblici = events if self.solo_bot() else [e for e in events if e.get("visibile") is None]
+        if pubblici:
+            for t in list(self.spettatori):
+                if not self.posti_di(t):
+                    await self.m.invia(t, {"type": "eventi", "tavolo": self.id, "posto": 0, "eventi": pubblici,
+                                           "spettatore": True})
         for t in self.tokens_umani():
             for s in self.posti_di(t):
                 vis = [e for e in events if e.get("visibile") is None or s in e["visibile"]]
@@ -573,6 +632,8 @@ class Tavolo:
         async with self.lock:
             if not self.st or self.st.fase != FASE_FINE_MANO:
                 return
+            if not self.solo_bot() and token not in self.tokens_umani():
+                return      # con giocatori umani il "Continua" degli spettatori non conta
             self.attivo(token)
             self.ack.add(token)
         self.sveglia()
@@ -720,6 +781,7 @@ class Manager:
                 for t in self.tavoli.values():
                     if token in t.spettatori:
                         t.smetti(token)
+                        await t.invia_tutto()     # i giocatori vedono chi ha smesso di guardare
         for t in self.tavoli_di(token):
             if t.stato == "in_corso" and not self.connesso(token):
                 t.disconnesso_da.setdefault(token, time.monotonic())
@@ -864,6 +926,8 @@ class Manager:
                         raise ValueError("Durata del timer non valida")
                     setattr(tav, attr, v)
                     tav.timer_attivo = True
+            if "spettatori" in msg:
+                tav.spettatori_ammessi = bool(msg["spettatori"])
             if isinstance(msg.get("squadre"), list) and len(msg["squadre"]) == 2:
                 tav.squadre = [(str(n or "").strip()[:20] or NOMI_SQUADRE[i]) for i, n in enumerate(msg["squadre"])]
         elif tipo == "siedi":
@@ -893,11 +957,12 @@ class Manager:
         elif tipo == "guarda":
             tav.guarda(token)
             await self.invia(token, {"type": "tavolo", "tavolo": tav.info(token)})
-            await tav.invia_tutto(token)
+            await tav.invia_tutto()          # anche i giocatori vedono chi guarda
             await self.invia_lobby()
             return
         elif tipo == "smetti":
             tav.smetti(token)
+            await tav.invia_tutto()
             await self.invia_lobby()
             return
         elif tipo == "visto":
@@ -907,7 +972,10 @@ class Manager:
             await tav.striscia(token, int(msg["posto"]))
             return
         elif tipo == "frase":
-            await tav.frase(token, int(msg["posto"]), msg.get("indice"))
+            if msg.get("posto") is None and token in tav.spettatori:
+                await tav.frase_spettatore(token, msg.get("indice"))
+            else:
+                await tav.frase(token, int(msg["posto"]), msg.get("indice"))
             return
         elif tipo == "prosegui":
             await tav.prosegui(token)

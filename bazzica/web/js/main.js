@@ -178,13 +178,13 @@ class App {
     const tid = this.partita.tid;
     const spettatore = this.partita.spettatore;
     const box = el("div", {},
-      el("h3", {}, spettatore ? "Partita tra bot" : "Menu"),
+      el("h3", {}, spettatore ? "Stai guardando" : "Menu"),
       el("div", { class: "opzioni" },
         el("button", { class: "btn", onclick: () => { this.chiudiModal(); } }, spettatore ? "Continua a guardare" : "Riprendi"),
         spettatore
           ? el("button", { class: "btn", onclick: () => { this.smettiDiGuardare(); this.uscitoDa = tid; this.mostra("lobby"); } }, "Smetti di guardare")
           : el("button", { class: "btn", onclick: () => { this.uscitoDa = tid; this.mostra("lobby"); } }, "Torna alla lobby (la partita continua)"),
-        t && (t.owner || (t.miei && t.miei.length) || spettatore) ? el("button", {
+        t && (t.owner || (t.miei && t.miei.length)) ? el("button", {
           class: "btn pericolo", onclick: () => this.confermaTermina(tid),
         }, "Termina la partita") : null));
     this.apriModal(box, true);
