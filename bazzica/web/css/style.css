@@ -675,7 +675,7 @@ table.riepilogo .punto { border: 2px solid var(--outline); }
 .btn-striscia:active { transform: rotate(5deg) translateY(4px); box-shadow: 0 1px 0 var(--outline); }
 .btn-striscia:disabled { filter: grayscale(1); opacity: .45; cursor: default; }
 .carta-strisciata { position: fixed; z-index: 66; width: clamp(40px, 6vh, 60px); aspect-ratio: 336 / 594; transform: translate(-50%, -50%); pointer-events: none;
-  animation: strisciata 1.2s ease-in-out forwards; filter: drop-shadow(0 4px 2px rgba(0,0,0,.4)); }
+  animation: strisciata 1.65s ease-in-out forwards; filter: drop-shadow(0 4px 2px rgba(0,0,0,.4)); }
 .carta-strisciata .carta { width: 100%; height: 100%; }
 @keyframes strisciata {
   0% { opacity: 0; transform: translate(-50%, -50%) rotate(-20deg) scale(.6); }
@@ -908,3 +908,38 @@ body[data-schermo="gioco"] .sfondo-scienziati img { opacity: .8; width: clamp(64
   .scheda-nome { font-size: 20px; }
 }
 .filtro-scheda .chip-legenda { --c: var(--outline); }
+
+/* ===================== Ritmo: la giocata in tre tempi ===================== */
+/* evidenza leggera: giocata e carte prese si illuminano insieme, il resto del tavolo resta com'è */
+.tavola .carta.in-evidenza { position: relative; z-index: 2; transform: translateY(-5px) scale(1.04);
+  box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--outline), 0 0 18px 6px var(--gold);
+  transition: transform .25s ease-out, box-shadow .25s ease-out; }
+/* cartello del Turno alla distribuzione: discreto, più piccolo dei banner delle prese speciali */
+.banner-fx.turno { font-size: clamp(28px, 6vw, 64px); top: 36%; color: #fff3c4;
+  text-shadow: 0 3px 0 var(--outline), 0 0 18px rgba(0,0,0,.35); }
+.stanza-impostazioni select { max-width: 100%; min-width: 0; }
+/* la stanza non deve mai essere più larga dello schermo (telefono): le colonne si possono stringere */
+.stanza > * { min-width: 0; }
+.posti-croce { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.posto-lobby .pl-occ { overflow-wrap: anywhere; }
+
+/* ===================== Striscia più cattiva ===================== */
+.carta-strisciata { width: clamp(48px, 7.5vh, 76px); }
+/* il pulsante si fa notare quando si può strisciare */
+.btn-striscia:not(:disabled) { animation: striscia-pronta 1s ease-in-out infinite; }
+@keyframes striscia-pronta { 0%, 100% { transform: rotate(5deg) scale(1); box-shadow: 0 5px 0 var(--outline), 0 0 0 0 rgba(90,209,255,.7); }
+  50% { transform: rotate(-3deg) scale(1.08); box-shadow: 0 5px 0 var(--outline), 0 0 0 10px rgba(90,209,255,0); } }
+/* chi subisce la Striscia trema */
+.trema { animation: trema .12s linear 7; }
+@keyframes trema { 0%, 100% { translate: 0 0; } 25% { translate: -4px 1px; } 50% { translate: 3px -1px; } 75% { translate: -2px 2px; } }
+@media (prefers-reduced-motion: reduce) { .btn-striscia:not(:disabled), .trema { animation: none; } }
+
+/* ===================== Menu sempre raggiungibile ===================== */
+#ov-menu { z-index: 150; }
+#ov-menu .ov-box { max-width: 420px; }
+.ov-box.con-menu { position: relative; padding-top: 58px; }
+.btn-menu-modal { position: absolute; top: 10px; left: 10px; width: 40px; height: 40px; padding: 0; font-size: 20px; line-height: 1; }
+.menu-impostazioni { display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: left; margin: 10px 0 4px;
+  padding: 10px 12px; border: 3px solid var(--outline); border-radius: 14px; background: #fff; font-weight: 700; cursor: pointer; }
+.menu-impostazioni input { width: 22px; height: 22px; flex: none; accent-color: var(--sky); }
+.menu-impostazioni small { display: block; font-weight: 500; color: #6b5a4a; }

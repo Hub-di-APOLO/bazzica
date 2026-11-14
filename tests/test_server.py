@@ -233,7 +233,7 @@ def test_spettatore_partita_tra_bot(client):
         assert m["spettatore"] and m["info"]["spettatore"]
         assert all(o["carte"] is not None for o in m["obs"]["altri"].values())   # vede tutte le mani
         # finché non segnala di aver visto, i bot aspettano (ritmo umano); poi la partita prosegue
-        ws.send_json({"type": "visto", "tavolo": tid, "versione": 10 ** 9})
+        ws.send_json({"type": "visto", "tavolo": tid, "versione": m["info"]["versione"]})
         m = ricevi_fino(ws, lambda m: m["type"] == "eventi" and any(e["tipo"] == "giocata" for e in m["eventi"]))
         assert m["spettatore"]
         ws.send_json({"type": "smetti", "tavolo": tid})

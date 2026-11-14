@@ -92,3 +92,16 @@ export function aggiornaBarra(app) {
 }
 
 export { impostaModo };
+
+// ------------------------------------------------------------------ impostazioni
+/** Note scritte in sovraimpressione durante la partita: impostazione dell'account (o del dispositivo, da ospite). */
+export function noteAttive(app) {
+  if (app.account) return !(app.account.impostazioni && app.account.impostazioni.note === false);
+  return store("bazzica_note") !== "0";
+}
+
+export async function impostaNote(app, attive) {
+  if (!app.account) { store("bazzica_note", attive ? null : "0"); return; }
+  const d = await apiPost("/api/impostazioni", { note: !!attive });
+  app.account.impostazioni = d.impostazioni;
+}

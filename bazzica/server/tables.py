@@ -12,9 +12,10 @@ from ..engine import (preset, VARIANTI, new_game, legal_actions, apply_inplace, 
                       NOMI_POSTI, NOMI_SQUADRE, compagno, descrivi_opzione, opzioni_bazzica,
                       FASE_FINE_MANO, FASE_FINE_PARTITA, FASE_SCAMBIO, FASE_GIOCO)
 from ..engine.game import ev
+from ..engine.cards import val
 from ..bots import HeuristicAgent
 from . import ele as ELE
-from .account import Account, account_da_identita, normalizza_nome
+from .account import Account, account_da_identita, impostazioni_di, normalizza_nome
 from .config import Config
 from .log import GameLogger
 from .storico import Storico
@@ -22,6 +23,30 @@ from .storico import Storico
 NOMI_BOT = ["Bot Nord", "Bot Est", "Bot Sud", "Bot Ovest"]
 AVATAR = ["🦊", "🐻", "🐸", "🦁", "🐼", "🐵", "🦉", "🐙", "🐱", "🐲", "🐢", "🦭"]
 AVATAR_BOT = "🤖"
+# Ritmo della partita (impostazione del tavolo). ``fattore`` moltiplica BAZZICA_RITARDO_BOT (la pausa di
+# "pensiero" dei bot, che nel ritmo Svelto è quella di base); ``respiro`` è la pausa dopo che tutti i giocatori
+# hanno visto le animazioni; ``tetto`` è l'attesa massima dei loro "visto" (secondi). Le durate delle animazioni
+# per ritmo stanno nel client (game.js, RITMI).
+# ``finestra`` è il tempo minimo in cui il turno di un bot resta visibile al giocatore umano che lo segue, per
+# dargli il tempo di usare la Striscia.
+RITMI = {
+    "rilassato": {"fattore": 1.6, "respiro": 0.7, "tetto": 8.0, "finestra": 1.5},
+    "normale": {"fattore": 1.25, "respiro": 0.4, "tetto": 8.0, "finestra": 1.2},
+    "svelto": {"fattore": 1.0, "respiro": 0.0, "tetto": 7.0, "finestra": 0.8},
+}
+RITMO_PREDEFINITO = "rilassato"
+# gruppi di eventi che non fanno ripartire l'attesa dei giocatori: i passaggi coperti dello scambio (i bot
+# aspettano solo la distribuzione) e le esclamazioni, che il client mostra subito senza accodarle
+EVENTI_SENZA_ATTESA = {"scambio", "scambio_carta", "scambio_ricevuta", "scambio_completato",
+                       "che_palo", "frase", "striscia", "frase_spettatore"}
+# Striscia: quella che arriva subito dopo la fine del turno del giocatore precedente vale ancora se il client
+# stava guardando quel turno (secondi di tolleranza); un bot strisciato gioca dopo al massimo FRETTA_STRISCIA
+GRAZIA_STRISCIA = 2.5
+FRETTA_STRISCIA = 0.35
+# Striscia dei bot verso il giocatore umano che li precede: attesa dopo che ha visto il suo turno, probabilità
+ATTESA_STRISCIA_BOT = (1.5, 4.5)
+PROB_STRISCIA_BOT = 0.25
+PROB_STRISCIA_BOT_PERICOLO = 0.75
 FRASI = ["Veloce?!?", "Di#p?@co", "Praticamente pari", "Che culo...", "Aperta come...",
          "Faccio una giocata un po' particolare", "Stai giocando con paura", "Sei MATTO?!", "Ma hai tutti gli assi??", "CHE CULO",
          "Che provocateur"]
@@ -66,6 +91,21 @@ class Tavolo:
         self.attesa: dict = {}                 # token -> secondi in cui tocca a lui senza che agisca
         self.disconnesso_da: dict = {}         # token -> time.monotonic() della disconnessione
         self.ultimo_controllo = None           # ultimo controllo dell'inattività
+        self.ritmo = RITMO_PREDEFINITO
+        # attesa dei giocatori: versione degli eventi da vedere, quando è stata inviata, i "visto" ricevuti
+        self.rif_versione = 0
+        self.rif_tempo = time.monotonic()
+        self.visti: dict = {}                  # token -> ultima versione vista
+        self.visto_alle: dict = {}             # token -> quando ha visto la versione di riferimento
+        self.ricontrollo_task: Optional[asyncio.Task] = None
+        # turni di gioco, per la Striscia: chi ha il turno, da quale versione, quando è finito quello di ciascuno
+        self.turno_di = None
+        self.turno_n = 0                       # cresce a ogni cambio di turno
+        self.turno_inizio = 0                  # versione in cui è iniziato il turno corrente
+        self.turno_dal = time.monotonic()
+        self.turni_finiti: dict = {}           # posto -> (versione inizio, versione fine, ora della fine)
+        self.strisciato: dict = {}             # posto -> (turno_n, ora) dell'ultima Striscia ricevuta
+        self.striscia_bot_task: Optional[asyncio.Task] = None
         self.valutata = False                  # partita valutata eLE (deciso all'avvio)
         self.raccoglitore = None               # statistiche per posto della partita valutata
         self.esito_ele = None                  # variazioni di eLE dell'ultima partita valutata
@@ -126,11 +166,12 @@ class Tavolo:
             "id": self.id, "nome": self.nome, "variante": self.variante, "margherita": self.margherita,
             "squadre": list(self.squadre), "timer": self.timer_attivo,
             "timer_scambio": self.secondi_timer("scambio"), "timer_giocata": self.secondi_timer("giocata"),
+            "ritmo": self.ritmo,
             "guardabile": self.guardabile(token),
             "spettatori": len(self.spettatori),
             "spettatori_ammessi": self.spettatori_ammessi,
             "stato": self.stato, "owner_nome": self.m.nome_di(self.owner),
-            "posti": [None if p is None else {"tipo": p["tipo"], "nome": p["nome"], "avatar": p.get("avatar"),
+            "posti": [None if p is None or (self.stato == "finita" and p.get("sostituisce")) else {"tipo": p["tipo"], "nome": p["nome"], "avatar": p.get("avatar"),
                                                "connesso": p["tipo"] == "bot" or self.m.connesso(p["token"]),
                                                **self.m.ele_pubblico(p.get("account_id"))}
                       for p in self.posti],
@@ -278,6 +319,10 @@ class Tavolo:
         self.attesa = {}
         self.disconnesso_da = {}
         self.ultimo_controllo = None
+        self.visti = {}
+        self.visto_alle = {}
+        self.rif_versione, self.rif_tempo = self.versione, time.monotonic()
+        self.turno_di, self.turni_finiti, self.strisciato = None, {}, {}
         self.valutata, _ = self.valutazione()
         # statistiche per posto: servono all'eLE (se valutata) e alla scheda dei giocatori con account
         self.raccoglitore = ELE.Raccoglitore(rules)
@@ -308,10 +353,10 @@ class Tavolo:
             raise ValueError("Partita in corso")
         self.stato = "lobby"
         self.st = None
-        # i bot che sostituivano un giocatore restano come bot normali
+        # i posti di chi era stato sostituito da un bot tornano liberi
         for s, p in enumerate(self.posti):
             if p and p.get("sostituisce"):
-                self.posti[s] = {"tipo": "bot", "nome": NOMI_BOT[s], "avatar": AVATAR_BOT}
+                self.posti[s] = None
 
     # ------------------------------------------------------------------ sostituzioni (uscita, inattività)
     def sostituisci(self, token, motivo):
@@ -380,18 +425,115 @@ class Tavolo:
         self.sveglia()
 
     def tokens_attesi(self):
-        """Giocatori umani da cui la partita sta aspettando una mossa (o il "Continua" di fine Mano)."""
+        """Giocatori umani da cui la partita sta aspettando una mossa (o il "Continua" di fine Mano).
+
+        Chi sta ancora guardando le animazioni non è atteso: il suo tempo (inattività) parte dal "visto"."""
         st = self.st
         if self.stato != "in_corso" or not st or self.in_pausa:
             return set()
         if st.fase == FASE_FINE_MANO:
-            return self.tokens_umani() - self.ack
+            return {t for t in self.tokens_umani() - self.ack if self.ha_visto(t)}
         out = set()
         for s in required_actors(st):
             p = self.posti[s]
-            if p and p["tipo"] == "umano" and any(a.tipo != "attendi" for a in legal_actions(st, s)):
+            if p and p["tipo"] == "umano" and any(a.tipo != "attendi" for a in legal_actions(st, s)) \
+                    and self.ha_visto(p["token"]):
                 out.add(p["token"])
         return out
+
+    # ------------------------------------------------------------------ attesa dei giocatori ("visto")
+    @property
+    def parametri_ritmo(self):
+        return RITMI.get(self.ritmo, RITMI[RITMO_PREDEFINITO])
+
+    def ha_visto(self, token, ora=None):
+        """Il giocatore ha finito di vedere gli eventi di riferimento (o è scaduto il tetto)."""
+        if not self.m.attesa_giocatori:
+            return True
+        ora = time.monotonic() if ora is None else ora
+        if self.visti.get(token, -1) >= self.rif_versione:
+            return True
+        return ora - self.rif_tempo >= self.parametri_ritmo["tetto"]
+
+    def da_aspettare(self):
+        """Giocatori umani connessi che non hanno ancora visto (i disconnessi e i sostituiti no)."""
+        if not self.m.attesa_giocatori:
+            return set()
+        return {t for t in self.tokens_umani() if self.m.connesso(t) and not self.ha_visto(t)}
+
+    def nuovo_riferimento(self, events):
+        """Dopo un gruppo di eventi da guardare, i bot (e i timer) aspettano che i giocatori l'abbiano visto."""
+        if all(e["tipo"] in EVENTI_SENZA_ATTESA for e in events):
+            return
+        self.rif_versione, self.rif_tempo = self.versione, time.monotonic()
+        if self.m.attesa_giocatori and self.tokens_umani():
+            # allo scadere del tetto i timer partono comunque
+            if self.ricontrollo_task and not self.ricontrollo_task.done():
+                self.ricontrollo_task.cancel()
+            self.ricontrollo_task = asyncio.create_task(self._ricontrolla_dopo(self.parametri_ritmo["tetto"] + 0.05))
+
+    async def _ricontrolla_dopo(self, secondi):
+        try:
+            await asyncio.sleep(secondi)
+        except asyncio.CancelledError:
+            return
+        if self.stato == "in_corso" and self.st:
+            prima = self.timer_chiave
+            self.aggiorna_timer()
+            if self.timer_chiave != prima:
+                await self.invia_tutto()
+
+    async def visto_giocatore(self, token, versione):
+        """Un giocatore ha finito di animare gli eventi fino a ``versione``."""
+        if versione <= self.visti.get(token, -1):
+            return
+        prima = self.ha_visto(token)
+        self.visti[token] = versione
+        if not prima and self.ha_visto(token):
+            self.visto_alle[token] = time.monotonic()
+            vecchio = self.timer_chiave
+            self.aggiorna_timer()
+            if self.timer_chiave != vecchio:
+                await self.invia_tutto()
+
+    async def _attendi_giocatori(self):
+        """Prima che un bot giochi: tutti i giocatori umani connessi hanno visto (o tetto), poi il respiro."""
+        tetto = self.parametri_ritmo["tetto"]
+        while self.stato == "in_corso" and not self.in_pausa:
+            attesi = self.da_aspettare()
+            if not attesi:
+                break
+            if time.monotonic() - self.rif_tempo >= tetto:
+                return
+            await asyncio.sleep(0.05)
+        respiro = self.parametri_ritmo["respiro"] if self.m.ritardo_bot[1] > 0 else 0.0
+        visti = [self.visto_alle.get(t) for t in self.tokens_umani() if self.m.connesso(t)]
+        visti = [v for v in visti if v is not None and v >= self.rif_tempo]
+        if respiro and visti:
+            resto = max(visti) + respiro - time.monotonic()
+            if resto > 0:
+                await asyncio.sleep(resto)
+
+    def pensiero(self, st, legal):
+        """Pausa di "pensiero" del bot (secondi): dentro i limiti del ritmo, più lunga se la scelta è difficile."""
+        lo, hi = self.m.ritardo_bot
+        if hi <= 0:
+            return 0.0
+        f = self.parametri_ritmo["fattore"]
+        lo, hi = lo * f, hi * f
+        if st.fase == FASE_SCAMBIO:
+            d = 0.7
+        else:
+            gioca = [a for a in legal if a.tipo == "gioca"]
+            bazzica = any(a.tipo == "bazzica" for a in legal)
+            if len(gioca) <= 1 and not bazzica:
+                d = 0.0
+            else:
+                d = min(1.0, (len(gioca) - 1) / 8)
+                if bazzica:
+                    d = max(d, 0.9)
+        d = min(1.0, max(0.0, d + random.uniform(-0.1, 0.1)))
+        return lo + (hi - lo) * d
 
     def attivo(self, token):
         """Il giocatore ha fatto qualcosa: si azzera il suo tempo di inattività."""
@@ -479,6 +621,7 @@ class Tavolo:
             "squadre": list(self.squadre),
             "terminata_da": self.terminata_da,
             "timer": self.info_timer(),
+            "ritmo": self.ritmo,
             "spettatori": self.nomi_spettatori(),
             "ele": [self.m.ele_pubblico((p or {}).get("account_id")) or None for p in self.posti],
             "valutata": self.valutata,
@@ -511,9 +654,14 @@ class Tavolo:
         st = self.st
         if not self.timer_attivo or not st or self.stato != "in_corso" or self.in_pausa:
             return None
+        # il timer di un giocatore parte solo quando ha finito di vedere le animazioni (o è scaduto il tetto)
         if st.fase == FASE_SCAMBIO and self.secondi_timer("scambio") > 0:
+            if any(self.m.connesso(t) and not self.ha_visto(t) for t in self.tokens_umani()):
+                return None
             return ("scambio", st.mano_n, st.turno)
         if st.fase == FASE_GIOCO and self.secondi_timer("giocata") > 0 and self.posti[st.corrente]["tipo"] == "umano":
+            if not self.ha_visto(self.posti[st.corrente]["token"]):
+                return None
             giocate = len(st.giocate_mano)
             return ("giocata", st.mano_n, st.turno, giocate, st.corrente)
         return None
@@ -636,8 +784,13 @@ class Tavolo:
             self.logger.nota(f"  [spettatore] {nome}: «{FRASI[indice]}»")
         await self.invia_eventi([ev("frase_spettatore", nome=nome, testo=FRASI[indice])])
 
-    def visto(self, token, versione):
-        if token in self.spettatori and isinstance(versione, int):
+    async def visto(self, token, versione):
+        """"Ho finito di vedere fino a ``versione``": serve solo a regolare le attese (bot e timer)."""
+        if not isinstance(versione, int) or isinstance(versione, bool) or not 0 <= versione <= self.versione:
+            raise ValueError("Versione non valida")
+        if self.posti_di(token):
+            await self.visto_giocatore(token, versione)
+        elif token in self.spettatori:
             self.spettatori[token] = max(self.spettatori[token], versione)
 
     async def _attendi_spettatori(self, massimo=10.0):
@@ -694,6 +847,8 @@ class Tavolo:
         events = list(events) + extra
         if self.logger:
             self.logger.scrivi(events)
+        self.aggiorna_turno()
+        self.nuovo_riferimento(events)
         self.aggiorna_timer()
         await self.invia_eventi(events)
         await self.invia_tutto()
@@ -746,21 +901,116 @@ class Tavolo:
             self.logger.nota(f"  {self.posti[posto]['nome']} ({NOMI_POSTI[posto]}): «{FRASI[indice]}»")
         await self.invia_eventi(events)
 
-    async def striscia(self, token, posto):
-        """Carta "strisciata" sul tavolo per mettere fretta al giocatore precedente (solo effetto)."""
-        if self.stato != "in_corso" or self.in_pausa or self.st.fase != FASE_GIOCO:
+    # ------------------------------------------------------------------ turni e Striscia
+    def aggiorna_turno(self):
+        """Tiene traccia di chi ha il turno di gioco e da quale versione (serve alla Striscia)."""
+        st = self.st
+        corr = st.corrente if st and self.stato == "in_corso" and st.fase == FASE_GIOCO else None
+        if corr == self.turno_di:
+            return
+        ora = time.monotonic()
+        if self.turno_di is not None:
+            self.turni_finiti[self.turno_di] = (self.turno_inizio, self.versione, ora)
+        self.turno_di, self.turno_inizio, self.turno_dal = corr, self.versione, ora
+        self.turno_n += 1
+        if corr is not None:
+            self.programma_striscia_bot()
+
+    def striscia_valida(self, precedente, versione, ora):
+        """La Striscia verso ``precedente`` è sul suo turno: in corso, oppure appena finito ma era quello che il
+        client stava guardando (``versione``) da non più di GRAZIA_STRISCIA secondi."""
+        if self.st.fase == FASE_GIOCO and self.st.corrente == precedente:
+            return True
+        if versione is None or precedente not in self.turni_finiti:
+            return False
+        inizio, fine, quando = self.turni_finiti[precedente]
+        return inizio <= versione < fine and ora - quando <= GRAZIA_STRISCIA
+
+    async def striscia(self, token, posto, versione=None):
+        """Carta "strisciata" sul tavolo per mettere fretta al giocatore precedente: un bot strisciato gioca
+        subito, un giocatore umano sente la carta e il telefono vibra."""
+        if versione is not None and (not isinstance(versione, int) or isinstance(versione, bool)
+                                     or not 0 <= versione <= self.versione):
+            raise ValueError("Versione non valida")
+        if self.stato != "in_corso" or self.in_pausa:
             return
         if posto not in self.posti_di(token):
             raise ValueError("Non controlli questo posto")
         self.attivo(token)
         precedente = (posto + 3) % 4
-        if self.st.corrente != precedente:
-            return  # il turno è appena passato: si ignora senza errori
         ora = time.monotonic()
+        if not self.striscia_valida(precedente, versione, ora):
+            return  # il turno è passato da un pezzo: si ignora senza errori
         if ora - self.ultima_striscia[posto] < self.m.pausa_striscia:
             return
         self.ultima_striscia[posto] = ora
+        if self.turno_di == precedente:
+            self.strisciato[precedente] = (self.turno_n, ora)
         await self.invia_eventi([ev("striscia", seat=posto, verso=precedente)])
+
+    def programma_striscia_bot(self):
+        """Tocca a un giocatore umano e il posto dopo è un bot: forse il bot gli striscia una carta."""
+        if self.striscia_bot_task and not self.striscia_bot_task.done():
+            self.striscia_bot_task.cancel()
+        self.striscia_bot_task = None
+        if not self.m.attesa_giocatori or self.turno_di is None:
+            return
+        p = self.posti[self.turno_di]
+        bot = (self.turno_di + 1) % 4
+        if not p or p["tipo"] != "umano" or bot not in self.agents:
+            return
+        prob = PROB_STRISCIA_BOT_PERICOLO if self.pericolo_per(bot) else PROB_STRISCIA_BOT
+        if random.random() >= prob:
+            return
+        self.striscia_bot_task = asyncio.create_task(self._striscia_bot(bot, self.turno_n, p["token"]))
+
+    def pericolo_per(self, bot):
+        """Il bot ha una Scopa o una Piccola a portata di mano (vede solo le sue carte e il tavolo)."""
+        st = self.st
+        tavola, mano = st.tavola, st.mani[bot]
+        if not mano:
+            return False
+        if len(tavola) <= 2:
+            return True                       # tavolo quasi vuoto: dopo la giocata si può spazzare
+        if any(val(c) == sum(val(t) for t in tavola) for c in mano):
+            return True                       # una sua carta prende tutto il tavolo
+        return bool(st.rules.curie and len(tavola) <= 4)   # Curie: la Piccola è dietro l'angolo
+
+    async def _striscia_bot(self, bot, turno, token_umano):
+        try:
+            # prima il giocatore deve vedere che tocca a lui, poi un po' di "suspense"
+            inizio = time.monotonic()
+            while not self.ha_visto(token_umano) and time.monotonic() - inizio < self.parametri_ritmo["tetto"]:
+                await asyncio.sleep(0.1)
+            await asyncio.sleep(random.uniform(*ATTESA_STRISCIA_BOT))
+        except asyncio.CancelledError:
+            return
+        if self.stato != "in_corso" or self.in_pausa or self.turno_n != turno or bot not in self.agents:
+            return
+        ora = time.monotonic()
+        if ora - self.ultima_striscia[bot] < self.m.pausa_striscia:
+            return
+        self.ultima_striscia[bot] = ora
+        await self.invia_eventi([ev("striscia", seat=bot, verso=(bot + 3) % 4)])
+
+    async def _attendi_finestra(self, s, fine_pensiero):
+        """Il bot ``s`` gioca dopo il suo pensiero e, se lo segue un giocatore umano connesso, non prima che il
+        turno gli sia rimasto visibile per la "finestra" della Striscia. Strisciato, gioca subito."""
+        bersaglio = fine_pensiero
+        dopo = self.posti[(s + 1) % 4]
+        if self.m.attesa_giocatori and dopo and dopo["tipo"] == "umano" and self.m.connesso(dopo["token"]):
+            visto = self.visto_alle.get(dopo["token"])
+            visibile = visto if visto is not None and visto >= self.rif_tempo else time.monotonic()
+            bersaglio = max(bersaglio, visibile + self.parametri_ritmo["finestra"])
+        turno = self.turno_n
+        while self.stato == "in_corso" and not self.in_pausa:
+            ora = time.monotonic()
+            colpo = self.strisciato.get(s)
+            if colpo and colpo[0] == turno:
+                bersaglio = min(bersaglio, max(colpo[1] + FRETTA_STRISCIA, ora))
+            if ora >= bersaglio:
+                return
+            await asyncio.sleep(min(0.05, bersaglio - ora))
 
     async def prosegui(self, token):
         async with self.lock:
@@ -818,13 +1068,23 @@ class Tavolo:
                 s, legal = self._bot_da_far_agire()
                 if s is None:
                     return
-                lo, hi = self.m.ritardo_bot
-                ritardo = random.uniform(lo, hi) if hi > 0 else 0
+                inizio = time.monotonic()
+                pensiero = self.pensiero(st, legal)
                 if any(a.tipo == "attendi" for a in legal) and st.fase != FASE_SCAMBIO:
-                    ritardo = min(ritardo, 0.3)
-                if self.spettatori and not self.tokens_umani():
-                    await self._attendi_spettatori()
-                await asyncio.sleep(ritardo)
+                    # decisione facoltativa fuori turno (es. "Che Palo!"): rapida e senza aspettare nessuno
+                    await asyncio.sleep(min(pensiero, 0.3))
+                else:
+                    if self.spettatori and not self.tokens_umani():
+                        await self._attendi_spettatori()
+                    elif self.tokens_umani():
+                        await self._attendi_giocatori()
+                    # il pensiero corre mentre gli altri guardano le animazioni
+                    if st.fase == FASE_GIOCO:
+                        await self._attendi_finestra(s, inizio + pensiero)
+                    else:
+                        resto = inizio + pensiero - time.monotonic()
+                        if resto > 0:
+                            await asyncio.sleep(resto)
                 async with self.lock:
                     if self.stato != "in_corso" or self.in_pausa:
                         return
@@ -844,7 +1104,7 @@ class Tavolo:
 
 class Manager:
     def __init__(self, cartella_log="logs", db_path="bazzica.db", ritardo_bot=(0.8, 1.5), pausa_fine_mano=2.0,
-                 timer_scambio=0, timer_giocata=0, config: Optional[Config] = None):
+                 timer_scambio=0, timer_giocata=0, config: Optional[Config] = None, attesa_giocatori=None):
         self.config = config or Config()
         self.tavoli: dict[str, Tavolo] = {}
         self.conn: dict[str, set] = {}       # token -> set di websocket
@@ -853,6 +1113,9 @@ class Manager:
         self.cartella_log = cartella_log
         self.storico = Storico(db_path)
         self.ritardo_bot = ritardo_bot
+        # i bot aspettano che i giocatori abbiano visto le animazioni; spento con BAZZICA_RITARDO_BOT=0-0
+        # (bot istantanei, come nei test), salvo richiesta esplicita
+        self.attesa_giocatori = ritardo_bot[1] > 0 if attesa_giocatori is None else attesa_giocatori
         self.pausa_fine_mano = pausa_fine_mano
         self.pausa_palo = 3.0
         self.pausa_striscia = 1.0
@@ -882,7 +1145,9 @@ class Manager:
         aid = account_da_identita(token)
         if not aid:
             return None
-        return {"nome": self.nome_di(token), **self.ele_pubblico(aid), "partite": self.ele_cache_di(aid)["partite"]}
+        a = self.account.per_id(aid) or {}
+        return {"nome": self.nome_di(token), **self.ele_pubblico(aid), "partite": self.ele_cache_di(aid)["partite"],
+                "impostazioni": impostazioni_di(a)}
 
     def nome_riservato(self, nome):
         """Un ospite non può usare il nome di un account."""
@@ -1113,6 +1378,10 @@ class Manager:
                     tav.timer_attivo = True
             if "spettatori" in msg:
                 tav.spettatori_ammessi = bool(msg["spettatori"])
+            if "ritmo" in msg:
+                if msg["ritmo"] not in RITMI:
+                    raise ValueError("Ritmo sconosciuto")
+                tav.ritmo = msg["ritmo"]
             if isinstance(msg.get("squadre"), list) and len(msg["squadre"]) == 2:
                 tav.squadre = [(str(n or "").strip()[:20] or NOMI_SQUADRE[i]) for i, n in enumerate(msg["squadre"])]
         elif tipo == "siedi":
@@ -1151,10 +1420,10 @@ class Manager:
             await self.invia_lobby()
             return
         elif tipo == "visto":
-            tav.visto(token, msg.get("versione"))
+            await tav.visto(token, msg.get("versione"))
             return
         elif tipo == "striscia":
-            await tav.striscia(token, int(msg["posto"]))
+            await tav.striscia(token, int(msg["posto"]), msg.get("versione"))
             return
         elif tipo == "frase":
             if msg.get("posto") is None and token in tav.spettatori:

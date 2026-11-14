@@ -9,6 +9,7 @@ from __future__ import annotations
 import datetime as dt
 import hashlib
 import hmac
+import json
 import re
 import secrets
 import time
@@ -28,6 +29,34 @@ PREFISSO_IDENTITA = "acc:"     # identità interna delle connessioni con account
 
 class ErroreAccount(ValueError):
     """Errore da mostrare all'utente (testo in italiano)."""
+
+
+# impostazioni dell'account (valgono su tutti i dispositivi): nome -> valore predefinito
+# ``note``: note scritte in sovraimpressione durante la partita (carte passate, inizio Mano, crediti, avvisi)
+IMPOSTAZIONI_PREDEFINITE = {"note": True}
+
+
+def impostazioni_di(a: dict) -> dict:
+    """Impostazioni dell'account con i valori predefiniti per quelle mai scelte."""
+    out = dict(IMPOSTAZIONI_PREDEFINITE)
+    try:
+        salvate = json.loads(a.get("impostazioni") or "{}")
+    except (ValueError, TypeError):
+        salvate = {}
+    if isinstance(salvate, dict):
+        out.update({k: v for k, v in salvate.items() if k in IMPOSTAZIONI_PREDEFINITE
+                    and isinstance(v, type(IMPOSTAZIONI_PREDEFINITE[k]))})
+    return out
+
+
+def controlla_impostazioni(nuove) -> dict:
+    """Solo impostazioni conosciute e del tipo giusto (per ora tutte vero/falso)."""
+    if not isinstance(nuove, dict) or not nuove:
+        raise ErroreAccount("Impostazioni non valide")
+    for k, v in nuove.items():
+        if k not in IMPOSTAZIONI_PREDEFINITE or type(v) is not type(IMPOSTAZIONI_PREDEFINITE[k]):
+            raise ErroreAccount("Impostazioni non valide")
+    return dict(nuove)
 
 
 def adesso() -> str:
@@ -160,6 +189,18 @@ class Account:
         with self.storico.lock, self.storico._conn() as c:
             c.execute("UPDATE account SET hash=?, sale=? WHERE id=?", (h, sale, a["id"]))
             c.execute("UPDATE sessioni SET revocata=1 WHERE account_id=?", (a["id"],))
+
+    def imposta_impostazioni(self, account_id: int, nuove: dict) -> dict:
+        """Aggiorna alcune impostazioni dell'account; restituisce tutte quelle risultanti."""
+        nuove = controlla_impostazioni(nuove)
+        with self.storico.lock, self.storico._conn() as c:
+            r = c.execute("SELECT impostazioni FROM account WHERE id=?", (account_id,)).fetchone()
+            if r is None:
+                raise ErroreAccount("Account inesistente")
+            tutte = impostazioni_di({"impostazioni": r["impostazioni"]})
+            tutte.update(nuove)
+            c.execute("UPDATE account SET impostazioni=? WHERE id=?", (json.dumps(tutte), account_id))
+        return tutte
 
     def imposta_avatar(self, account_id: int, avatar: str):
         with self.storico.lock, self.storico._conn() as c:

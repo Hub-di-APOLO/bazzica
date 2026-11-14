@@ -329,7 +329,24 @@ Qualche regola di fair play del campionato online:
   mano**: niente suggerimenti dalla curva.
 - **Inattività e abbandoni**: chi resta fermo per 5 minuti quando tocca a lui, o resta disconnesso per 5 minuti
   mentre gli altri lo aspettano, viene sostituito da un bot. Lo stesso succede con "Esci dalla partita". Chi è
-  stato sostituito può **riprendere il posto** finché la partita è in corso.
+  stato sostituito può **riprendere il posto** finché la partita è in corso. A partita finita il suo posto torna
+  **libero**: chi vuole si risiede e si ricomincia.
+- **La Striscia**: la guerra di nervi è parte dello sport. Mentre gioca chi ti precede, il pulsante 🃏 pulsa: premilo
+  e una carta gli sfrega sul panno davanti, il suo avatar trema e, se è al telefono, il telefono vibra. È il modo
+  elegante per dirgli "occhio, che dopo di te arriva la Scopa". Contro un bot funziona davvero: il bot ti lascia
+  sempre il tempo di strisciare e, strisciato, gioca di fretta (la carta che sceglie è la stessa, ma il pubblico
+  apprezza). E i bot ricambiano: quando sul tavolo profuma di Scopa o di Piccola, il bot che ti segue ti striscia
+  la sua carta mentre ci pensi.
+- **Il menu ☰**: c'è sempre, anche sopra il riepilogo della Mano o la schermata finale. Da lì si torna alla
+  partita, alla stanza del tavolo o alla lobby, si termina la partita, si esce dall'account e si accendono o
+  spengono le **note scritte** (carte passate, inizio Mano, crediti, avvisi). Con un account la scelta vale su ogni
+  dispositivo; da ospite, solo su quello che stai usando. Si trova anche in lobby, in ⚙ Impostazioni.
+- **Il ritmo della partita**: al tavolo vero una giocata ha tre tempi. La carta viene posata, tutti guardano, poi chi
+  prende raccoglie con calma. Lo stadio digitale fa lo stesso: la carta resta ferma sul tavolo, la giocata e le carte
+  prese si illuminano insieme, poi scivolano verso chi ha preso. I bot "pensano" più a lungo quando la scelta è
+  difficile e non giocano finché tutti hanno visto la giocata prima (al massimo qualche secondo, se un telefono si
+  addormenta). Il ritmo si sceglie nella stanza: **Rilassato** (predefinito, come al tavolo vero), **Normale** o
+  **Svelto**, per chi ha il treno tra dieci minuti.
 - **Account**: si gioca con il proprio account (per entrare nella classifica eLE) oppure come ospite.
 - **La scheda del campione**: ogni atleta con account ha una scheda pubblica con tutta la carriera. Ci sono
   partite, vittorie, serie di vittorie e abbandoni (il pubblico non dimentica). Ci sono le giocate spettacolari:

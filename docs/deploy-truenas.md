@@ -273,7 +273,7 @@ Lo storico è un solo file: `/mnt/POOL/apps/bazzica/data/storico.db`.
 | `BAZZICA_TAVOLO_INATTIVO_MIN`  | 180      | minuti prima di eliminare un tavolo non avviato e vuoto   |
 | `BAZZICA_PAUSA_MAX_ORE`        | 12       | ore prima di chiudere una partita senza nessuno connesso  |
 | `BAZZICA_INATTIVITA_MIN`       | 5        | minuti dopo cui un giocatore inattivo o disconnesso è sostituito da un bot |
-| `BAZZICA_RITARDO_BOT`          | 0.8-1.5  | pausa dei bot (secondi)                                   |
+| `BAZZICA_RITARDO_BOT`          | 0.8-1.5  | pensiero dei bot nel ritmo Svelto (s); Normale ×1,25, Rilassato ×1,6 |
 | `BAZZICA_SESSIONE_GIORNI`      | —        | giorni senza usarla dopo cui scade una sessione (90)      |
 | `BAZZICA_LOGIN_MAX_FALLITI`    | —        | login sbagliati prima del blocco, per IP e per nome (5)   |
 | `BAZZICA_LOGIN_BLOCCO_MIN`     | —        | minuti di blocco dopo troppi login sbagliati (15)         |

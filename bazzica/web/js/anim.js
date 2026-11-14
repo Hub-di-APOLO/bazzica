@@ -51,6 +51,8 @@ export function fiammella(x, y) {
 
 export function banner(testo, classe = "", sotto = "", durata = 1600) {
   const b = el("div", { class: "banner-fx " + classe }, testo, sotto ? el("small", {}, sotto) : null);
+  // i banner brevi (es. il cartello del Turno) completano l'animazione invece di sparire a metà
+  if (durata < 1600) b.style.animationDuration = `${durata}ms`;
   document.body.append(b);
   setTimeout(() => b.remove(), durata + 100);
   return sleep(Math.min(durata, 1100) * VELOCITA);
@@ -459,5 +461,14 @@ export function cartaStrisciata(cartaEl, x, y) {
   w.style.left = x + "px";
   w.style.top = y + "px";
   document.body.append(w);
-  setTimeout(() => w.remove(), 1250);
+  setTimeout(() => w.remove(), 1700);
+}
+
+/** L'elemento trema per un attimo (chi subisce la Striscia). */
+export function trema(elemento, durata = 900) {
+  if (!elemento) return;
+  elemento.classList.remove("trema");
+  void elemento.offsetWidth;            // riparte anche se stava già tremando
+  elemento.classList.add("trema");
+  setTimeout(() => elemento.classList.remove("trema"), durata);
 }

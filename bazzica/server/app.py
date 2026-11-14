@@ -13,7 +13,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from ..engine import MAZZO
-from .account import ErroreAccount, LimiteTentativi, identita, normalizza_nome
+from .account import ErroreAccount, LimiteTentativi, identita, impostazioni_di, normalizza_nome
 from .config import Config
 from .sicurezza import (codice_valido, ip_reale, Secchiello, ContaConnessioni, CHIUSURA_CODICE,
                         CHIUSURA_TROPPE_CONN, CHIUSURA_MESSAGGIO, CHIUSURA_FREQUENZA)
@@ -153,7 +153,8 @@ def create_app(manager: Manager | None = None, config: Config | None = None) -> 
 
     def risposta_account(a: dict, sessione: str | None = None):
         out = {"account": {"nome": a["nome"], "avatar": a.get("avatar"), **m.ele_pubblico(a["id"]),
-                           "partite": m.ele_cache_di(a["id"])["partite"]}}
+                           "partite": m.ele_cache_di(a["id"])["partite"],
+                           "impostazioni": impostazioni_di(a)}}
         if sessione:
             out["sessione"] = sessione
         return out
@@ -208,6 +209,19 @@ def create_app(manager: Manager | None = None, config: Config | None = None) -> 
         if not a:
             raise HTTPException(401, "Sessione non valida o scaduta")
         return risposta_account(a)
+
+    @app.post("/api/impostazioni")
+    async def api_impostazioni(request: Request):
+        """Cambia le impostazioni dell'account (es. {"note": false}); vale su tutti i suoi dispositivi."""
+        _, dati = await richiesta_account(request)
+        a = await asyncio.to_thread(m.account.da_sessione, token_sessione(request))
+        if not a:
+            raise HTTPException(401, "Sessione non valida o scaduta")
+        try:
+            tutte = await asyncio.to_thread(m.account.imposta_impostazioni, a["id"], dati)
+        except ErroreAccount as ex:
+            raise HTTPException(400, str(ex)) from None
+        return {"impostazioni": tutte}
 
     @app.get("/api/classifica")
     async def api_classifica(request: Request):

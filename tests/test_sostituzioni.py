@@ -124,10 +124,17 @@ def test_se_esce_l_ultimo_umano_la_partita_e_interrotta(tmp_path):
             # a partita finita non si può più "riprendere"
             a.send_json({"type": "riprendi", "tavolo": tid})
             ricevi_fino(a, lambda m: m["type"] == "errore")
-            # tornati nella stanza, il posto è di un bot normale
+            # nella stanza il posto di chi è uscito risulta già libero, e lo è davvero tornando in preparazione
+            assert tav.info(tav.owner)["posti"][0] is None
             a.send_json({"type": "alzati", "tavolo": tid, "posto": 1})
             ricevi_fino(a, lambda m: m["type"] == "tavolo" and m["tavolo"]["stato"] == "lobby")
-            assert tav.posti[0] == {"tipo": "bot", "nome": "Bot Nord", "avatar": "🤖"}
+            assert tav.posti[0] is None
+            # "Nuova partita" non parte con un posto vuoto: chi è uscito si risiede
+            a.send_json({"type": "avvia", "tavolo": tid})
+            assert "4 giocatori" in ricevi_fino(a, lambda m: m["type"] == "errore")["messaggio"]
+            a.send_json({"type": "siedi", "tavolo": tid, "posto": 0, "nome": "Anna"})
+            m = ricevi_fino(a, lambda m: m["type"] == "tavolo" and m["tavolo"]["posti"][0])
+            assert m["tavolo"]["posti"][0]["nome"] == "Anna" and m["tavolo"]["miei"] == [0]
 
 
 # --------------------------------------------------------------------------- inattività

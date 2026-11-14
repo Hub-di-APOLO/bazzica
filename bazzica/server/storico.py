@@ -108,7 +108,7 @@ CREATE TABLE IF NOT EXISTS statistiche_partite (
 );
 CREATE INDEX IF NOT EXISTS statistiche_account ON statistiche_partite(account_id);
 """
-VERSIONE_SCHEMA = 2
+VERSIONE_SCHEMA = 3        # versione 3: colonna account.impostazioni (JSON con le impostazioni dell'account)
 MIN_PARTITE_CONFRONTO = 3   # partite minime insieme per "compagno preferito", "bestia nera", "vittima"
 
 
@@ -136,6 +136,10 @@ class Storico:
             c.executescript(SCHEMA_ELE)
         if versione < 2:
             c.executescript(SCHEMA_STATISTICHE)
+        if versione < 3:
+            colonne = {r[1] for r in c.execute("PRAGMA table_info(account)")}
+            if "impostazioni" not in colonne:
+                c.execute("ALTER TABLE account ADD COLUMN impostazioni TEXT")
         if versione < VERSIONE_SCHEMA:
             c.execute(f"PRAGMA user_version = {VERSIONE_SCHEMA}")
 

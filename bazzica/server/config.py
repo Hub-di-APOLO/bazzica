@@ -9,7 +9,11 @@ Variabili (tutte facoltative):
   BAZZICA_DATI                 cartella dello storico SQLite                (<progetto>/data)
   BAZZICA_LOG                  cartella dei log delle partite               (<progetto>/logs)
   BAZZICA_CODICE               codice d'accesso; vuoto = nessun codice      ("")
-  BAZZICA_RITARDO_BOT          pausa dei bot in secondi "min-max"           (0.8-1.5)
+  BAZZICA_RITARDO_BOT          pausa di "pensiero" dei bot in secondi
+                               "min-max" nel ritmo Svelto; Normale la
+                               moltiplica per 1,25 e Rilassato per 1,6.
+                               0-0 = bot istantanei e nessuna attesa dei
+                               giocatori (solo per prove)                 (0.8-1.5)
   BAZZICA_MAX_TAVOLI           tavoli in totale; 0 = nessun limite          (100)
   BAZZICA_MAX_TAVOLI_TOKEN     tavoli creati da uno stesso browser          (10)
   BAZZICA_MAX_CONN_IP          WebSocket aperte da uno stesso IP            (30)

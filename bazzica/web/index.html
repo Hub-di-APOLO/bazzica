@@ -90,6 +90,7 @@
       <button class="btn" id="btn-cambia-nome">Cambia nome</button>
       <button class="btn" id="btn-classifica">Classifica</button>
       <button class="btn" id="btn-storico">Storico</button>
+      <button class="btn" id="btn-impostazioni" title="Impostazioni">&#9881; Impostazioni</button>
       <button class="btn" id="btn-account">Accedi</button>
     </header>
     <div class="lobby-grid">
@@ -138,6 +139,11 @@
             <option value="0">Nessuno</option><option value="8">8 s</option><option value="10">10 s</option>
             <option value="15">15 s</option><option value="20">20 s</option><option value="30">30 s</option><option value="45">45 s</option><option value="60">60 s</option></select></label>
         </div>
+        <label>Ritmo <select id="stanza-ritmo">
+          <option value="rilassato">Rilassato</option>
+          <option value="normale">Normale</option>
+          <option value="svelto">Svelto</option></select></label>
+        <p class="nota">Rilassato è come al tavolo vero: la carta si posa, tutti guardano, poi si raccoglie. Svelto è per chi ha fretta.</p>
         <div class="nomi-squadre">
           <label>Nome squadra Nord–Sud <input id="stanza-sq0" maxlength="20" placeholder="Squadra 1"></label>
           <label>Nome squadra Est–Ovest <input id="stanza-sq1" maxlength="20" placeholder="Squadra 2"></label>
@@ -247,13 +253,18 @@
   </div>
 </div>
 <div id="ov-pausa" class="overlay nascosto">
-  <div class="ov-box">
+  <div class="ov-box con-menu">
+    <button class="btn icona btn-menu-modal" id="btn-menu-pausa" title="Menu">&#9776;</button>
     <div class="spinner"></div>
     <p id="ov-pausa-testo"></p>
   </div>
 </div>
 <div id="ov-modal" class="overlay nascosto">
   <div class="ov-box modal" id="ov-modal-box"></div>
+</div>
+<!-- menu della partita: sopra a qualsiasi altra finestra, così c'è sempre una via d'uscita -->
+<div id="ov-menu" class="overlay nascosto">
+  <div class="ov-box modal" id="ov-menu-box"></div>
 </div>
 <div id="ov-connessione" class="banner-connessione nascosto">Connessione persa — riconnessione in corso…</div>
 <div id="toast" class="toast nascosto"></div>

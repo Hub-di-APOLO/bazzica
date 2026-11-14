@@ -232,7 +232,7 @@ const SINTESI = {
   // Scopa: tre colpi di spazzola sul panno e un tintinnio finale
   scopa: () => { spazzolata(0, 0.32, 0.9); spazzolata(0.3, 0.3, 0.8); spazzolata(0.58, 0.5, 1.0); [2093, 2637, 3136].forEach((f, i) => tono(f, 1.05 + i * 0.06, 0.25, { vol: 0.05 })); },
   // carta strisciata sul panno: tre sfregamenti secchi
-  striscia: () => { [0, 0.26, 0.52, 0.78].forEach((t, i) => rumore(t, 0.2, { vol: 0.35, freq: i % 2 ? 2600 : 1900, q: 1.4, sweep: i % 2 ? 0.7 : 1.4 })); },
+  striscia: () => { [0, 0.22, 0.44, 0.66, 0.88, 1.1].forEach((t, i) => rumore(t, 0.2, { vol: 0.55, freq: i % 2 ? 2600 : 1900, q: 1.4, sweep: i % 2 ? 0.7 : 1.4 })); rumore(1.3, 0.12, { vol: 0.6, freq: 900, q: 0.8 }); },
   // ticchettio del timer
   tic: () => { tono(1800, 0, 0.05, { tipo: "square", vol: 0.06 }); },
   // prese buone

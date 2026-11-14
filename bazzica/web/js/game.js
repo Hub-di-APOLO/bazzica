@@ -3,9 +3,22 @@ import { el, $, $$, sleep, POSTI, SQUADRE, FRASI, nomeCarta, nomiCarte, val, squ
 import { carta, dorso } from "./cards.js";
 import { suona } from "./audio.js";
 import * as fx from "./anim.js";
+import { noteAttive } from "./account.js";
 
 const NOMI_TIPO = { tris: "Tris", coppia: "Coppia con somma ≤ 9", diverse: "Tre carte diverse con somma ≤ 9" };
 const ORIGINI = [["sparecchio", "Scope di sparecchio"], ["bazzica", "Scope da Bazzica"], ["piccola", "Piccole"], ["grande", "Grandi"], ["asso", "Assi (Avogadro)"]];
+
+/**
+ * Ritmo della partita (impostazione del tavolo, ms). Una giocata ha tre tempi: posa (la carta resta ferma
+ * sul tavolo), evidenza (giocata e carte prese illuminate insieme), raccolta (le carte vanno a chi ha preso).
+ * "ferma": quanto resta illuminata una carta che non prende niente. Svelto ≈ i tempi di prima.
+ * Le pause dei bot e l'attesa dei "visto" sono sul server (tables.py, RITMI).
+ */
+export const RITMI = {
+  rilassato: { posa: 700, evidenza: 900, raccolta: 650, ferma: 900, cartello: 1200, dopoScambio: 1000 },
+  normale: { posa: 450, evidenza: 600, raccolta: 500, ferma: 600, cartello: 800, dopoScambio: 600 },
+  svelto: { posa: 0, evidenza: 450, raccolta: 420, ferma: 0, cartello: 0, dopoScambio: 0 },
+};
 
 const PALETTE = [["#ffb547", "#ff6fae"], ["#5ad1ff", "#7a4cff"], ["#7be37b", "#1fa3a3"], ["#ff8a5c", "#e8336d"],
   ["#ffd23f", "#ff7a00"], ["#b28dff", "#ff6fd8"], ["#4dd4ac", "#3d7bff"], ["#ff6f61", "#ffb347"]];
@@ -52,6 +65,12 @@ export class Partita {
   }
 
   /** Nomi delle squadre scelti nella stanza (predefiniti: "Squadra 1" e "Squadra 2"). */
+  /** Tempi del ritmo scelto nella stanza. */
+  tempi() {
+    const st = this.stati[this.view];
+    return RITMI[st && st.info && st.info.ritmo] || RITMI.rilassato;
+  }
+
   sq() {
     const st = this.stati[this.view];
     return (st && st.info && st.info.squadre) || SQUADRE;
@@ -62,6 +81,7 @@ export class Partita {
     this.spettatore = spettatore;
     if (this.tid !== tid) {
       this.tid = tid;
+      this.vistoInviato = -1;
       this.stati = {};
       this.view = null;
       this.coda = [];
@@ -130,8 +150,10 @@ export class Partita {
       }
     } finally {
       this.inElaborazione = false;
-      // spettatore: dice al server che ha finito di vedere, così i bot giocano a ritmo umano
-      if (this.spettatore && !this.coda.length && this.ultimaVersione != null) {
+      // dice al server che ha finito di vedere le animazioni: i bot aspettano, così si gioca a ritmo umano
+      // (giocatori e spettatori delle partite tra soli bot)
+      if (!this.coda.length && this.ultimaVersione != null && this.ultimaVersione > (this.vistoInviato ?? -1)) {
+        this.vistoInviato = this.ultimaVersione;
         this.app.rete.invia({ type: "visto", tavolo: this.tid, versione: this.ultimaVersione });
       }
     }
@@ -499,10 +521,18 @@ export class Partita {
     }, 3000);
   }
 
+  /** Nota scritta in sovraimpressione durante la partita (si può spegnere nelle impostazioni). */
+  nota(testo) {
+    if (noteAttive(this.app)) toast(testo);
+  }
+
   striscia() {
     const sx = $("#btn-striscia");
     if (sx.disabled) return;
-    this.app.rete.invia({ type: "striscia", tavolo: this.tid, posto: this.view });
+    // la versione che sto guardando: se il turno è appena passato, il server sa che stavo guardando quello
+    const st = this.stati[this.view];
+    const versione = st && st.info ? st.info.versione : undefined;
+    this.app.rete.invia({ type: "striscia", tavolo: this.tid, posto: this.view, versione });
     this.strisciaRicarica = true;
     sx.disabled = true;
     setTimeout(() => { this.strisciaRicarica = false; const st = this.stati[this.view]; if (st) this.renderPalo(st); }, 1000);
@@ -870,7 +900,7 @@ export class Partita {
       case "nuova_mano":
         if (this.modalRiepilogo) { this.app.chiudiModal(); this.modalRiepilogo = false; }
         this.modalFinale = false;
-        toast(`Mano ${e.mano} — mazziere ${info.nomi[e.mazziere]}`);
+        this.nota(`Mano ${e.mano} — mazziere ${info.nomi[e.mazziere]}`);
         break;
       case "distribuzione": {
         suona("distribuzione");
@@ -885,8 +915,17 @@ export class Partita {
           voli.push(fx.vola(dorso(), src, dst, { durata: 380, ritardo: i * 90, svanisci: false }));
         }
         await Promise.all(voli);
+        // un attimo di respiro: il cartello con il numero del Turno
+        const T = this.tempi();
+        if (T.cartello) {
+          fx.banner(`Turno ${e.turno}`, "turno", `Mano ${e.mano}`, T.cartello);
+          await sleep(T.cartello);
+        }
         break;
       }
+      case "fine_scambio":
+        await sleep(this.tempi().dopoScambio);
+        break;
       case "inizio_giocate":
         if (st && this.miei.includes(e.corrente)) suona("turno");
         break;
@@ -925,7 +964,7 @@ export class Partita {
         suona("passa");
         await fx.vola(carta(e.carta), src, dst, { durata: 520, ruota: 360 });
         fx.scintille(dst.left + dst.width / 2, dst.top + dst.height / 2, 14, "#5ad1ff");
-        toast(`${info.nomi[e.da]} ti ha passato: ${nomeCarta(e.carta)}`);
+        this.nota(`${info.nomi[e.da]} ti ha passato: ${nomeCarta(e.carta)}`);
         break;
       }
       case "bazzica":
@@ -941,18 +980,25 @@ export class Partita {
         fx.cartaStrisciata(dorso(), x, y);
         const g = this.avatarDi(e.seat);
         if (g) fx.fumetto(g.getBoundingClientRect(), "😤");
+        // chi la subisce trema; se sono io, il telefono vibra e la mia mano si agita
+        const bersaglio = this.avatarDi(e.verso);
+        if (bersaglio) fx.trema(bersaglio);
+        if (this.miei.includes(e.verso) && !this.spettatore) {
+          fx.trema($("#mia-mano"));
+          try { if (navigator.vibrate) navigator.vibrate([70, 50, 70, 50, 140]); } catch (err) { /* niente vibrazione */ }
+        }
         break;
       }
       case "sostituito":
-        toast(e.motivo === "uscito" ? `${e.nome} ha lasciato la partita: al suo posto gioca un bot 🤖`
+        this.nota(e.motivo === "uscito" ? `${e.nome} ha lasciato la partita: al suo posto gioca un bot 🤖`
           : `${e.nome} ${e.motivo === "inattivo" ? "non gioca" : "non è connesso"} da qualche minuto: al suo posto gioca un bot 🤖`);
         break;
       case "rientrato":
-        toast(`${e.nome} ha ripreso il suo posto`);
+        this.nota(`${e.nome} ha ripreso il suo posto`);
         break;
       case "tempo_scaduto":
-        if (e.fase === "scambio") toast("⏱ Tempo scaduto: chi non aveva scambiato ha passato una carta a caso");
-        else toast(`⏱ Tempo scaduto: per ${info.nomi[e.seat]} gioca il computer`);
+        if (e.fase === "scambio") this.nota("⏱ Tempo scaduto: chi non aveva scambiato ha passato una carta a caso");
+        else this.nota(`⏱ Tempo scaduto: per ${info.nomi[e.seat]} gioca il computer`);
         break;
       case "inizio_partita":
         this.modalInterrotta = false;
@@ -1139,14 +1185,42 @@ export class Partita {
       return;
     }
 
+    // 1) posa: la carta arriva sul tavolo e resta ferma, ben visibile
+    const T = this.tempi();
     suona("carta");
     await fx.vola(carta(e.carta), src, dst, { durata: 420 });
     const giocata = carta(e.carta);
     tav.append(giocata);
     this.adattaTavola();
-    if (!e.presa.length) return;
+    if (T.posa) await sleep(T.posa);
+    if (!e.presa.length) {
+      // non prende niente: resta un momento in evidenza prima che il gioco passi al successivo
+      if (T.ferma) {
+        giocata.classList.add("in-evidenza");
+        await sleep(T.ferma);
+        giocata.classList.remove("in-evidenza");
+      }
+      return;
+    }
 
     const prese = e.presa.map((c) => $(`#tavola .carta[data-carta="${c}"]`)).filter(Boolean);
+    if (!e.scopa) {
+      // 2) evidenza: la giocata e le carte che prende si illuminano insieme (il resto del tavolo resta com'è)
+      const insieme = [giocata, ...prese];
+      insieme.forEach((x) => x.classList.add("in-evidenza"));
+      await sleep(T.evidenza);
+      // 3) raccolta: le carte scivolano verso chi ha preso
+      await this.volaAlleTavole(insieme, e.squadra, T.raccolta);
+      const punti = (e.girate || []).length;
+      if (punti) {
+        const c = fx.centro(tav.getBoundingClientRect());
+        this.clamore(punti, c.x, c.y);
+        this.reazioni(e.squadra, punti);
+      }
+      await this.effettiFinali(e);
+      return;
+    }
+    // Scopa: dopo la posa, l'animazione speciale di sempre
     await fx.lampeggia([giocata, ...prese], "evidenzia", 450);
     const c = fx.centro(tav.getBoundingClientRect());
     const punti = (e.girate || []).length;
@@ -1162,14 +1236,7 @@ export class Partita {
       this.reazioni(e.squadra, punti);
       await fx.bannerLettere("SCOPA!", punti > 1 ? `${chi} — ${punti} Scope!` : chi, punti >= 3 ? "grossa" : "");
       await this.effettiFinali(e);
-      return;
     }
-    await this.volaAlleTavole([giocata, ...prese], e.squadra, 420);
-    if (punti) {
-      this.clamore(punti, c.x, c.y);
-      this.reazioni(e.squadra, punti);
-    }
-    await this.effettiFinali(e);
   }
 
   async volaAlleTavole(elems, squadraT, durata) {
@@ -1205,7 +1272,7 @@ export class Partita {
       suona("asso");
       await fx.banner(e.assi.length > 1 ? `${e.assi.length} ASSI!` : "ASSO!", "asso", "Scopa (Avogadro)", 1200);
     }
-    if (e.credito_pagato) toast(`${this.sq()[e.squadra]}: riscossi ${e.credito_pagato} di credito Bazzica`);
+    if (e.credito_pagato) this.nota(`${this.sq()[e.squadra]}: riscossi ${e.credito_pagato} di credito Bazzica`);
     if (e.girate && e.girate.length) {
       const r = this.rectPrese(e.squadra);
       fx.scintille(r.left + r.width / 2, r.top + r.height / 2, 10);

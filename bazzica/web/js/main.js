@@ -6,7 +6,7 @@ import { impostaFileSuoni, isMuto, setMuto } from "./audio.js";
 import { initLobby, renderLobby, renderStanza } from "./lobby.js";
 import { mostraStorico } from "./storico.js";
 import { mostraClassifica } from "./classifica.js";
-import { initAccesso, aggiornaAccount, aggiornaBarra } from "./account.js";
+import { initAccesso, aggiornaAccount, aggiornaBarra, esci, noteAttive, impostaNote } from "./account.js";
 import { initScheda, apriScheda } from "./giocatore.js";
 import { Partita } from "./game.js";
 
@@ -108,6 +108,9 @@ class App {
     aggiornaMuto();
     muto.addEventListener("click", () => { setMuto(!isMuto()); aggiornaMuto(); });
     $("#btn-menu").addEventListener("click", () => this.menuGioco());
+    $("#btn-menu-pausa").addEventListener("click", () => this.menuGioco());
+    $("#btn-impostazioni").addEventListener("click", () => this.menuImpostazioni());
+    $("#ov-menu").addEventListener("click", (ev) => { if (ev.target.id === "ov-menu") this.chiudiMenu(); });
     $("#ov-modal").addEventListener("click", (ev) => { if (ev.target.id === "ov-modal" && this.modalChiudibile) this.chiudiModal(); });
   }
 
@@ -116,6 +119,7 @@ class App {
     document.body.dataset.schermo = nome;
     $$(".screen").forEach((s) => s.classList.remove("attivo"));
     $(`#scr-${nome}`).classList.add("attivo");
+    this.chiudiMenu();
     if (nome !== "gioco") {
       $("#ov-passa").classList.add("nascosto");
       $("#ov-pausa").classList.add("nascosto");
@@ -134,11 +138,56 @@ class App {
   apriModal(contenuto, chiudibile = false) {
     const box = $("#ov-modal-box");
     box.innerHTML = "";
+    // in partita ogni finestra ha il ☰: c'è sempre una via d'uscita (tavolo, lobby, account)
+    const conMenu = this.schermo === "gioco";
+    box.classList.toggle("con-menu", conMenu);
+    if (conMenu) box.append(el("button", { class: "btn icona btn-menu-modal", title: "Menu", onclick: () => this.menuGioco() }, "☰"));
     box.append(contenuto);
     this.modalChiudibile = chiudibile;
     $("#ov-modal").classList.remove("nascosto");
   }
   chiudiModal() { $("#ov-modal").classList.add("nascosto"); }
+
+  /** Il menu sta sopra a ogni altra finestra e, chiuso, la lascia com'era. */
+  apriMenu(contenuto) {
+    const box = $("#ov-menu-box");
+    box.innerHTML = "";
+    box.append(contenuto);
+    $("#ov-menu").classList.remove("nascosto");
+  }
+  chiudiMenu() { $("#ov-menu").classList.add("nascosto"); }
+
+  /** Interruttore delle note scritte in sovraimpressione (impostazione dell'account o, da ospite, del dispositivo). */
+  interruttoreNote() {
+    const casella = el("input", { type: "checkbox", id: "imp-note" });
+    casella.checked = noteAttive(this);
+    casella.addEventListener("change", async () => {
+      const v = casella.checked;
+      casella.disabled = true;
+      try { await impostaNote(this, v); } catch (e) { casella.checked = !v; toast(e.message || "Impostazione non salvata"); }
+      casella.disabled = false;
+    });
+    return el("label", { class: "menu-impostazioni", for: "imp-note" },
+      el("span", {}, "Note scritte durante la partita",
+        el("small", {}, this.account ? "Carte passate, inizio Mano, crediti e avvisi in sovraimpressione. Vale per il tuo account su ogni dispositivo."
+          : "Carte passate, inizio Mano, crediti e avvisi in sovraimpressione. Da ospite vale solo su questo dispositivo.")),
+      casella);
+  }
+
+  bottoneAccount() {
+    return this.account
+      ? el("button", { class: "btn", onclick: () => { this.chiudiMenu(); this.chiudiModal(); this.smettiDiGuardare(); esci(this); } }, "Esci dall'account")
+      : el("button", { class: "btn", onclick: () => { this.chiudiMenu(); this.chiudiModal(); this.smettiDiGuardare(); store("bazzica_ospite", null); this.mostra("accesso"); } }, "Schermata di accesso");
+  }
+
+  menuImpostazioni() {
+    this.apriMenu(el("div", {},
+      el("h3", {}, "Impostazioni"),
+      this.interruttoreNote(),
+      el("div", { class: "opzioni" },
+        el("button", { class: "btn primario", onclick: () => this.chiudiMenu() }, "Fatto"),
+        this.bottoneAccount())));
+  }
 
   vaiStanza(tid) {
     const t = this.tavoli[tid];
@@ -212,17 +261,30 @@ class App {
     const t = this.tavoli[this.partita.tid];
     const tid = this.partita.tid;
     const spettatore = this.partita.spettatore;
+    const inCorso = t && t.stato === "in_corso";
+    // si lascia la partita (che continua) per andare altrove: niente rientro automatico
+    const lascia = (dove) => {
+      this.chiudiMenu();
+      this.chiudiModal();
+      if (spettatore) this.smettiDiGuardare();
+      this.uscitoDa = tid;
+      if (dove === "tavolo" && t) this.vaiStanza(tid);
+      else this.mostra("lobby");
+    };
     const box = el("div", {},
       el("h3", {}, spettatore ? "Stai guardando" : "Menu"),
       el("div", { class: "opzioni" },
-        el("button", { class: "btn", onclick: () => { this.chiudiModal(); } }, spettatore ? "Continua a guardare" : "Riprendi"),
-        spettatore
-          ? el("button", { class: "btn", onclick: () => { this.smettiDiGuardare(); this.uscitoDa = tid; this.mostra("lobby"); } }, "Smetti di guardare")
-          : el("button", { class: "btn", onclick: () => { this.uscitoDa = tid; this.mostra("lobby"); } }, "Torna alla lobby (la partita continua)"),
-        t && (t.owner || (t.miei && t.miei.length)) ? el("button", {
+        el("button", { class: "btn primario", onclick: () => this.chiudiMenu() }, spettatore ? "Continua a guardare" : "Torna alla partita"),
+        t ? el("button", { class: "btn", onclick: () => lascia("tavolo") },
+          spettatore ? "Smetti di guardare e vai al tavolo" : inCorso ? "Vai alla stanza del tavolo (la partita continua)" : "Torna al tavolo") : null,
+        el("button", { class: "btn", onclick: () => lascia("lobby") },
+          spettatore ? "Smetti di guardare e vai alla lobby" : inCorso ? "Torna alla lobby (la partita continua)" : "Torna alla lobby"),
+        inCorso && (t.owner || (t.miei && t.miei.length)) ? el("button", {
           class: "btn pericolo", onclick: () => this.confermaTermina(tid),
-        }, "Termina la partita") : null));
-    this.apriModal(box, true);
+        }, "Termina la partita") : null),
+      this.interruttoreNote(),
+      el("div", { class: "opzioni" }, this.bottoneAccount()));
+    this.apriMenu(box);
   }
 
   /** Conferma dentro il gioco (niente finestra del browser). */
@@ -233,11 +295,12 @@ class App {
       el("div", { class: "riga-btn" },
         el("button", { class: "btn pericolo", onclick: () => {
           this.rete.invia({ type: "termina", tavolo: tid });
-          this.chiudiModal();
+          if (dalGioco) this.chiudiMenu(); else this.chiudiModal();
           toast("Partita terminata");
         } }, "Sì, termina"),
         el("button", { class: "btn", onclick: () => (dalGioco ? this.menuGioco() : this.chiudiModal()) }, "Annulla")));
-    this.apriModal(box, true);
+    if (dalGioco) this.apriMenu(box);
+    else this.apriModal(box, true);
   }
 
   messaggio(m) {
